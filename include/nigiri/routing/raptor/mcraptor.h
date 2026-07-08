@@ -392,7 +392,7 @@ namespace nigiri::routing {
         }
 
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode, typename... Args>
-        bag mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::copy(Args... t) {
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::copy(Args... t) {
             bag ret = bag();
             ret.add(*this);
             for (auto& e : ret.pareto_set) {
@@ -602,14 +602,14 @@ namespace nigiri::routing {
                 auto any_marked = false;
                 state_.station_mark_.for_each_set_bit([&](std::uint64_t const i) {
                     //COMMENT: markiert die Station (falls es Umstiegsmöglichkeiten gibt) und bestimmt alle Routen, die von der markierten Stationen ausgehn
-                    for (auto const& r : tt_.location_routes_[location_idx_t{ i }]) {
+                    for (auto const& r : this->tt_.location_routes_[location_idx_t{ i }]) {
                         any_marked = true;
                         state_.route_mark_.set(to_idx(r), true);
                     }
                     if constexpr (Rt) {
                         //COMMENT: Echtzeit-Fall
                         for (auto const& rt_t :
-                            rtt_->location_rt_transports_[location_idx_t{ i }]) {
+                            this->rtt_->location_rt_transports_[location_idx_t{ i }]) {
                             any_marked = true;
                             state_.rt_transport_mark_.set(to_idx(rt_t), true);
                         }
@@ -707,7 +707,7 @@ namespace nigiri::routing {
                     if (!dest_time.is_invalid()) {
                         trace("ADDING JOURNEY: start={}, dest={} @ {}, transfers={}\n",
                             start_time, delta_to_unix(base(), round_times_[k][i][Vias].get_any_time()),
-                            loc{ tt_, location_idx_t{i} }, k - 1);
+                            loc{ this->tt_, location_idx_t{i} }, k - 1);
                         for (auto label : dest_time.pareto_set) {
                             // TODO: added criteria should also be added in journey
                             auto const [optimal, it, dominated_by] = results.add(
@@ -720,7 +720,7 @@ namespace nigiri::routing {
                         if (!optimal) {
                             trace("  DOMINATED BY: start={}, dest={} @ {}, transfers={}\n",
                                 dominated_by->start_time_, dominated_by->dest_time_,
-                                loc{ tt_, dominated_by->dest_ }, dominated_by->transfers_);
+                                loc{ this->tt_, dominated_by->dest_ }, dominated_by->transfers_);
                         }
                     }
                 }
@@ -734,18 +734,19 @@ namespace nigiri::routing {
             }
             trace("reconstruct({} - {}, {} transfers", j.departure_time(),
                 j.arrival_time(), j.transfers_);
-            reconstruct_journey<SearchDir>(tt_, rtt_, q, state_, j, base(), base_);
+            reconstruct_journey<SearchDir>(this->tt_, this->rtt_, q, state_, j, base(), base_);
         }
 
         #pragma endregion
 
         #pragma region private_functions
-        date::sys_days base() const {
-            return tt_.internal_interval_days().from_ + as_int(base_) * date::days{ 1 };
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        date::sys_days mcraptor<SearchDir, Rt, Vias, Search>::base() const {
+            return this->tt_.internal_interval_days().from_ + as_int(this->base_) * date::days{ 1 };
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search,
-            bool WithClaszFilter,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <bool WithClaszFilter,
             bool WithBikeFilter,
             bool WithCarFilter,
             bool WithWheelchairFilter>
@@ -755,7 +756,7 @@ namespace nigiri::routing {
                 auto const r = route_idx_t{ r_idx };
 
                 if constexpr (WithClaszFilter) {
-                    if (!is_allowed(allowed_claszes_, tt_.route_clasz_[r])) {
+                    if (!is_allowed(allowed_claszes_, this->tt_.route_clasz_[r])) {
                         return;
                     }
                 }
@@ -763,10 +764,10 @@ namespace nigiri::routing {
                 auto section_bike_filter = false;
                 if constexpr (WithBikeFilter) {
                     auto const bikes_allowed_on_all_sections =
-                        tt_.route_bikes_allowed_.test(r_idx * 2);
+                        this->tt_.route_bikes_allowed_.test(r_idx * 2);
                     if (!bikes_allowed_on_all_sections) {
                         auto const bikes_allowed_on_some_sections =
-                            tt_.route_bikes_allowed_.test(r_idx * 2 + 1);
+                            this->tt_.route_bikes_allowed_.test(r_idx * 2 + 1);
                         if (!bikes_allowed_on_some_sections) {
                             return;
                         }
@@ -777,10 +778,10 @@ namespace nigiri::routing {
                 auto section_car_filter = false;
                 if constexpr (WithCarFilter) {
                     auto const cars_allowed_on_all_sections =
-                        tt_.route_cars_allowed_.test(r_idx * 2);
+                        this->tt_.route_cars_allowed_.test(r_idx * 2);
                     if (!cars_allowed_on_all_sections) {
                         auto const cars_allowed_on_some_sections =
-                            tt_.route_cars_allowed_.test(r_idx * 2 + 1);
+                            this->tt_.route_cars_allowed_.test(r_idx * 2 + 1);
                         if (!cars_allowed_on_some_sections) {
                             return;
                         }
@@ -791,10 +792,10 @@ namespace nigiri::routing {
                 auto section_wheelchair_filter = false;
                 if constexpr (WithWheelchairFilter) {
                     auto const wheelchair_accessibility_on_all_sections =
-                        tt_.route_wheelchair_accessible_.test(r_idx * 2);
+                        this->tt_.route_wheelchair_accessible_.test(r_idx * 2);
                     if (!wheelchair_accessibility_on_all_sections) {
                         auto const wheelchair_accessibility_on_some_sections =
-                            tt_.route_wheelchair_accessible_.test(r_idx * 2 + 1);
+                            this->tt_.route_wheelchair_accessible_.test(r_idx * 2 + 1);
                         if (!wheelchair_accessibility_on_some_sections) {
                             return;
                         }
@@ -827,8 +828,8 @@ namespace nigiri::routing {
             return any_marked;
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search,
-            bool WithClaszFilter,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <bool WithClaszFilter,
             bool WithBikeFilter,
             bool WithCarFilter,
             bool WithWheelchairFilter>
@@ -839,7 +840,7 @@ namespace nigiri::routing {
 
                 if constexpr (WithClaszFilter) {
                     if (!is_allowed(allowed_claszes_,
-                        rtt_->rt_transport_section_clasz_[rt_t][0])) {
+                        this->rtt_->rt_transport_section_clasz_[rt_t][0])) {
                         return;
                     }
                 }
@@ -847,10 +848,10 @@ namespace nigiri::routing {
                 auto section_bike_filter = false;
                 if constexpr (WithBikeFilter) {
                     auto const bikes_allowed_on_all_sections =
-                        rtt_->rt_transport_bikes_allowed_.test(rt_t_idx * 2);
+                        this->rtt_->rt_transport_bikes_allowed_.test(rt_t_idx * 2);
                     if (!bikes_allowed_on_all_sections) {
                         auto const bikes_allowed_on_some_sections =
-                            rtt_->rt_transport_bikes_allowed_.test(rt_t_idx * 2 + 1);
+                            this->rtt_->rt_transport_bikes_allowed_.test(rt_t_idx * 2 + 1);
                         if (!bikes_allowed_on_some_sections) {
                             return;
                         }
@@ -861,10 +862,10 @@ namespace nigiri::routing {
                 auto section_car_filter = false;
                 if constexpr (WithCarFilter) {
                     auto const cars_allowed_on_all_sections =
-                        rtt_->rt_transport_cars_allowed_.test(rt_t_idx * 2);
+                        this->rtt_->rt_transport_cars_allowed_.test(rt_t_idx * 2);
                     if (!cars_allowed_on_all_sections) {
                         auto const cars_allowed_on_some_sections =
-                            rtt_->rt_transport_cars_allowed_.test(rt_t_idx * 2 + 1);
+                            this->rtt_->rt_transport_cars_allowed_.test(rt_t_idx * 2 + 1);
                         if (!cars_allowed_on_some_sections) {
                             return;
                         }
@@ -875,10 +876,10 @@ namespace nigiri::routing {
                 auto section_wheelchair_filter = false;
                 if constexpr (WithWheelchairFilter) {
                     auto const wheelchair_accessible_on_all_sections =
-                        rtt_->rt_transport_wheelchair_accessibility_.test(rt_t_idx * 2);
+                        this->rtt_->rt_transport_wheelchair_accessibility_.test(rt_t_idx * 2);
                     if (!wheelchair_accessible_on_all_sections) {
                         auto const wheelchair_accessible_on_some_sections =
-                            rtt_->rt_transport_wheelchair_accessibility_.test(rt_t_idx * 2 +
+                            this->rtt_->rt_transport_wheelchair_accessibility_.test(rt_t_idx * 2 +
                                 1);
                         if (!wheelchair_accessible_on_some_sections) {
                             return;
@@ -929,7 +930,7 @@ namespace nigiri::routing {
                     trace(
                         "  loc={}, v={}, tmp={}, is_dest={}, is_via={}, target_v={}, "
                         "stay={}\n",
-                        loc{ tt_, location_idx_t{i} }, v, to_unix(tmp_bag.get_any_time()), is_dest, is_via,
+                        loc{ this->tt_, location_idx_t{i} }, v, to_unix(tmp_bag.get_any_time()), is_dest, is_via,
                         target_v, stay);
 
                     auto const transfer_time =
@@ -937,7 +938,7 @@ namespace nigiri::routing {
                         ? 0
                         : dir(adjusted_transfer_time(
                             transfer_time_settings_,
-                            tt_.locations_.transfer_time_[location_idx_t{ i }]
+                            this->tt_.locations_.transfer_time_[location_idx_t{ i }]
                             .count()));
                     auto const fp_target_time = tmp_bag.copy(transfer_time + dir(stay.count()));
 
@@ -973,15 +974,15 @@ namespace nigiri::routing {
             state_.prev_station_mark_.for_each_set_bit([&](std::uint64_t const i) {
                 auto const l_idx = location_idx_t{ i };
                 if constexpr (Rt) {
-                    if (prf_idx != 0U && (kFwd ? rtt_->has_td_footpaths_out_
-                        : rtt_->has_td_footpaths_in_)[prf_idx]
+                    if (prf_idx != 0U && (kFwd ? this->rtt_->has_td_footpaths_out_
+                        : this->rtt_->has_td_footpaths_in_)[prf_idx]
                         .test(l_idx)) {
                         return;
                     }
                 }
 
-                auto const& fps = kFwd ? tt_.locations_.footpaths_out_[prf_idx][l_idx]
-                    : tt_.locations_.footpaths_in_[prf_idx][l_idx];
+                auto const& fps = kFwd ? this->tt_.locations_.footpaths_out_[prf_idx][l_idx]
+                    : this->tt_.locations_.footpaths_in_[prf_idx][l_idx];
 
                 for (auto const& fp : fps) {
                     ++stats_.n_footpaths_visited_;
@@ -1022,10 +1023,10 @@ namespace nigiri::routing {
                     trace_upd(
                         "┊ ├k={} *** LB NO UPD: (from={}, tmp={}) --{}--> (to={}, "
                         "best={}) --> update => {}, LB={}, LB_AT_DEST={}, DEST={}\n",
-                        k, loc{ tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
+                        k, loc{ this->tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
                         adjusted_transfer_time(transfer_time_settings_,
                             fp.duration()),
-                        loc{ tt_, fp.target() }, new_best_[target][target_v].get_any_time(),
+                        loc{ this->tt_, fp.target() }, new_best_[target][target_v].get_any_time(),
                         to_unix(fp_target_time.get_any_time()), lower_bound,
                         to_unix(clamp(fp_target_time.get_any_time() + dir(lower_bound))),
                         to_unix(time_at_dest_[k].get_any_time()));
@@ -1035,9 +1036,9 @@ namespace nigiri::routing {
                 trace_upd(
                     "┊ ├k={}   footpath: ({}, tmp={}) --{}--> ({}, best={}) --> "
                     "update => {}, v={}->{}, stay={}\n",
-                    k, loc{ tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
+                    k, loc{ this->tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
                     adjusted_transfer_time(transfer_time_settings_, fp.duration()),
-                    loc{ tt_, fp.target() }, to_unix(new_best_[target][target_v].get_any_time()),
+                    loc{ this->tt_, fp.target() }, to_unix(new_best_[target][target_v].get_any_time()),
                     to_unix(fp_target_time.get_any_time()), v, target_v, stay);
 
                 //COMMENT: gegeben aus if-Bedingung: fp_target_time < round_times_[k] und best_
@@ -1053,9 +1054,9 @@ namespace nigiri::routing {
                 trace(
                     "┊ ├k={}   NO FP UPDATE: {} [best={}] --{}--> {} "
                     "[best={}, time_at_dest={}]\n",
-                    k, loc{ tt_, l_idx }, to_unix(new_best_[to_idx(l_idx)][target_v].get_any_time()),
+                    k, loc{ this->tt_, l_idx }, to_unix(new_best_[to_idx(l_idx)][target_v].get_any_time()),
                     adjusted_transfer_time(transfer_time_settings_, fp.duration()),
-                    loc{ tt_, fp.target() }, to_unix(new_best_[target][target_v].get_any_time()),
+                    loc{ this->tt_, fp.target() }, to_unix(new_best_[target][target_v].get_any_time()),
                     to_unix(time_at_dest_[k].get_any_time()));
             }
                     }
@@ -1075,14 +1076,14 @@ namespace nigiri::routing {
 
             state_.prev_station_mark_.for_each_set_bit([&](std::uint64_t const i) {
                 auto const l_idx = location_idx_t{ i };
-                if (!(kFwd ? rtt_->has_td_footpaths_out_
-                    : rtt_->has_td_footpaths_in_)[prf_idx]
+                if (!(kFwd ? this->rtt_->has_td_footpaths_out_
+                    : this->rtt_->has_td_footpaths_in_)[prf_idx]
                     .test(l_idx)) {
                     return;
                 }
 
-                auto const& fps = kFwd ? rtt_->td_footpaths_out_[prf_idx][l_idx]
-                    : rtt_->td_footpaths_in_[prf_idx][l_idx];
+                auto const& fps = kFwd ? this->rtt_->td_footpaths_out_[prf_idx][l_idx]
+                    : this->rtt_->td_footpaths_in_[prf_idx][l_idx];
 
                 for (auto v = 0U; v != Vias + 1; ++v) {
                     auto const tmp_bag = new_tmp_[i][v];
@@ -1122,8 +1123,8 @@ namespace nigiri::routing {
                                     "┊ ├k={} *** LB NO TD FP UPD: (from={}, tmp={}) --{}--> "
                                     "(to={}, best={}) --> update => {}, LB={}, LB_AT_DEST={}, "
                                     "DEST={}\n",
-                                    k, loc{ tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
-                                    fp.duration(), loc{ tt_, fp.target() }, new_best_[target][target_v].get_any_time(),
+                                    k, loc{ this->tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
+                                    fp.duration(), loc{ this->tt_, fp.target() }, new_best_[target][target_v].get_any_time(),
                                     fp_target_time.get_any_time(), lower_bound,
                                     to_unix(clamp(fp_target_time.get_any_time() + dir(lower_bound))),
                                     to_unix(time_at_dest_[k].get_any_time()));
@@ -1133,8 +1134,8 @@ namespace nigiri::routing {
                             trace_upd(
                                 "┊ ├k={}   td footpath: ({}, tmp={}) --{}--> ({}, best={}) --> "
                                 "update => {}, v={}->{}, stay={}\n",
-                                k, loc{ tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
-                                fp.duration(), loc{ tt_, fp.target() },
+                                k, loc{ this->tt_, l_idx }, to_unix(new_tmp_[to_idx(l_idx)][v].get_any_time()),
+                                fp.duration(), loc{ this->tt_, fp.target() },
                                 to_unix(new_best_[target][target_v].get_any_time()), to_unix(fp_target_time.get_any_time()), v,
                                 target_v, stay);
 
@@ -1151,9 +1152,9 @@ namespace nigiri::routing {
                             trace(
                                 "┊ ├k={}   NO TD FP UPDATE: {} [best={}] --{}--> {} "
                                 "[best={}, time_at_dest={}]\n",
-                                k, loc{ tt_, l_idx }, new_best_[to_idx(l_idx)][v].get_any_time(),
+                                k, loc{ this->tt_, l_idx }, new_best_[to_idx(l_idx)][v].get_any_time(),
                                 adjusted_transfer_time(transfer_time_settings_, fp.duration()),
-                                loc{ tt_, fp.target() }, new_best_[target][v].get_any_time(),
+                                loc{ this->tt_, fp.target() }, new_best_[target][v].get_any_time(),
                                 to_unix(time_at_dest_[k].get_any_time()));
                         }
 
@@ -1172,13 +1173,13 @@ namespace nigiri::routing {
             state_.prev_station_mark_.for_each_set_bit([&](auto const i) {
                 if (!end_reachable_.test(i)) {
                     trace_upd("┊ ├k={}   no end_reachable: {}\n", k,
-                        loc{ tt_, location_idx_t{i} });
+                        loc{ this->tt_, location_idx_t{i} });
                     [[likely]];
                     return;
                 }
 
                 trace_upd("┊ ├k={}   end_reachable: {}\n", k,
-                    loc{ tt_, location_idx_t{i} });
+                    loc{ this->tt_, location_idx_t{i} });
 
                 auto const l = location_idx_t{ i };
                 if (dist_to_end_[i] != std::numeric_limits<std::uint16_t>::max()) {
@@ -1194,9 +1195,9 @@ namespace nigiri::routing {
                 "┊ ├k={}, INTERMODAL FOOTPATH FROM LAST VIA: ({}, tmp={}) "
                 "--({} +stay={})--> "
                 "({}, best={})",
-                k, loc{ tt_, l }, to_unix(new_tmp_[to_idx(l)][v].get_any_time()), dist_to_end_[i],
+                k, loc{ this->tt_, l }, to_unix(new_tmp_[to_idx(l)][v].get_any_time()), dist_to_end_[i],
                 via_stops_[v].stay_,
-                loc{ tt_, location_idx_t{kIntermodalTarget} },
+                loc{ this->tt_, location_idx_t{kIntermodalTarget} },
                 to_unix(new_best_[kIntermodalTarget][Vias].get_any_time()), to_unix(end_time.get_any_time()));
 
             if (!new_best_[kIntermodalTarget][Vias].is_better(end_time)) {
@@ -1214,7 +1215,7 @@ namespace nigiri::routing {
                     // Case 2: l is no via -> don't add stay
                     auto const tmp_bag = new_tmp_[i][Vias];
                     if (tmp_bag.is_invalid()) {
-                        trace_upd("┊ ├k={}, loc={} NOT REACHED\n", k, loc{ tt_, l });
+                        trace_upd("┊ ├k={}, loc={} NOT REACHED\n", k, loc{ this->tt_, l });
                         return;
                     }
 
@@ -1223,8 +1224,8 @@ namespace nigiri::routing {
                     trace_upd(
                         "┊ ├k={}, INTERMODAL FOOTPATH: ({}, tmp={}) --{}--> "
                         "({}, best={})",
-                        k, loc{ tt_, l }, to_unix(new_tmp_[to_idx(l)][Vias].get_any_time()), dist_to_end_[i],
-                        loc{ tt_, location_idx_t{kIntermodalTarget} },
+                        k, loc{ this->tt_, l }, to_unix(new_tmp_[to_idx(l)][Vias].get_any_time()), dist_to_end_[i],
+                        loc{ this->tt_, location_idx_t{kIntermodalTarget} },
                         to_unix(new_best_[kIntermodalTarget][Vias].get_any_time()), to_unix(end_time.get_any_time()));
 
                     if (!new_best_[kIntermodalTarget][Vias].is_better(end_time)) {
@@ -1261,14 +1262,14 @@ namespace nigiri::routing {
                             trace(
                                 "┊ │k={}  TD INTERMODAL FOOTPATH: location={}, "
                                 "start_time={}, dist_to_end={} --> update to {}\n",
-                                k, loc{ tt_, l }, to_unix(fp_start_time.get_any_time()), duration,
+                                k, loc{ this->tt_, l }, to_unix(fp_start_time.get_any_time()), duration,
                                 to_unix(end_time.get_any_time()));
                         }
                         else {
                             trace(
                                 "┊ │k={}  TD INTERMODAL FOOTPATH: location={}, "
                                 "start_time={}, dist_to_end={} --> NO update to {} best={}\n",
-                                k, loc{ tt_, l }, to_unix(fp_start_time.get_any_time()), duration,
+                                k, loc{ this->tt_, l }, to_unix(fp_start_time.get_any_time()), duration,
                                 to_unix(end_time.get_any_time()), new_best_[kIntermodalTarget][Vias].get_any_time());
                         }
                     }
@@ -1276,12 +1277,12 @@ namespace nigiri::routing {
                 });
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search,
-            bool WithSectionBikeFilter,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <bool WithSectionBikeFilter,
             bool WithSectionCarFilter,
             bool WithSectionWheelchairFilter>
         bool mcraptor<SearchDir, Rt, Vias, Search>::update_rt_transport(unsigned const k, rt_transport_idx_t const rt_t) {
-            auto const stop_seq = rtt_->rt_transport_location_seq_[rt_t];
+            auto const stop_seq = this->rtt_->rt_transport_location_seq_[rt_t];
             auto et = std::array<bool, Vias + 1>{};
             auto v_offset = std::array<std::size_t, Vias + 1>{};
             auto any_marked = false;
@@ -1296,7 +1297,7 @@ namespace nigiri::routing {
 
                 if constexpr (WithSectionBikeFilter) {
                     if (!is_first &&
-                        !rtt_->rt_bikes_allowed_per_section_[rt_t][kFwd ? stop_idx - 1
+                        !this->rtt_->rt_bikes_allowed_per_section_[rt_t][kFwd ? stop_idx - 1
                         : stop_idx]) {
                         et.fill(false);
                         v_offset.fill(0);
@@ -1305,7 +1306,7 @@ namespace nigiri::routing {
 
                 if constexpr (WithSectionCarFilter) {
                     if (!is_first &&
-                        !rtt_->rt_cars_allowed_per_section_[rt_t][kFwd ? stop_idx - 1
+                        !this->rtt_->rt_cars_allowed_per_section_[rt_t][kFwd ? stop_idx - 1
                         : stop_idx]) {
                         et.fill(false);
                         v_offset.fill(0);
@@ -1313,7 +1314,7 @@ namespace nigiri::routing {
                 }
 
                 if constexpr (WithSectionWheelchairFilter) {
-                    if (!is_first && !rtt_->rt_wheelchair_accessible_per_section_
+                    if (!is_first && !this->rtt_->rt_wheelchair_accessible_per_section_
                         [rt_t][kFwd ? stop_idx - 1 : stop_idx]) {
                         et.fill(false);
                         v_offset.fill(0);
@@ -1348,11 +1349,11 @@ namespace nigiri::routing {
                                     "┊ │k={}    RT | name={}, dbg={}, time_by_transport={}, "
                                     "BETTER THAN current_best={} => update, {} marking station "
                                     "{}!\n",
-                                    k, rtt_->default_trip_short_name(tt_, rt_t),
-                                    rtt_->dbg(tt_, rt_t), to_unix(by_transport),
+                                    k, this->rtt_->default_trip_short_name(this->tt_, rt_t),
+                                    this->rtt_->dbg(this->tt_, rt_t), to_unix(by_transport),
                                     to_unix(current_best),
                                     !is_better(by_transport, current_best) ? "NOT" : "",
-                                    loc{ tt_, stp.location_idx() });
+                                    loc{ this->tt_, stp.location_idx() });
 
                                 ++stats_.n_earliest_arrival_updated_by_route_;
                                 new_tmp_[l_idx][target_v].add(get_best(by_transport));
@@ -1389,12 +1390,12 @@ namespace nigiri::routing {
             return any_marked;
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search,
-            bool WithSectionBikeFilter,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <bool WithSectionBikeFilter,
             bool WithSectionCarFilter,
             bool WithSectionWheelchairFilter>
         bool mcraptor<SearchDir, Rt, Vias, Search>::update_route(unsigned const k, route_idx_t const r) {
-            auto const stop_seq = tt_.route_location_seq_[r];
+            auto const stop_seq = this->tt_.route_location_seq_[r];
             bool any_marked = false;
 
             auto et = std::array<transport, Vias + 1>{};
@@ -1420,7 +1421,7 @@ namespace nigiri::routing {
                         trace(
                             "┊ │k={} v={}  stop_idx={} {}: not marked, no et - "
                             "skip\n",
-                            k, v, stop_idx, loc{ tt_, location_idx_t{l_idx} });
+                            k, v, stop_idx, loc{ this->tt_, location_idx_t{l_idx} });
                         continue;
                     }
 
@@ -1428,13 +1429,13 @@ namespace nigiri::routing {
                         "┊ │k={} v={}(+{})  stop_idx={}, location={}, round_times={}, "
                         "best={}, "
                         "tmp={}\n",
-                        k, v, v_offset[v], stop_idx, loc{ tt_, stp.location_idx() },
+                        k, v, v_offset[v], stop_idx, loc{ this->tt_, stp.location_idx() },
                         to_unix(round_times_[k - 1][l_idx][v].get_any_time()), to_unix(new_best_[l_idx][v].get_any_time()),
                         to_unix(new_tmp_[l_idx][v].get_any_time()));
 
                     if constexpr (WithSectionBikeFilter) {
                         if (!is_first &&
-                            !tt_.route_bikes_allowed_per_section_[r][kFwd ? stop_idx - 1
+                            !this->tt_.route_bikes_allowed_per_section_[r][kFwd ? stop_idx - 1
                             : stop_idx]) {
                             et[v] = {};
                             v_offset[v] = 0;
@@ -1443,7 +1444,7 @@ namespace nigiri::routing {
 
                     if constexpr (WithSectionCarFilter) {
                         if (!is_first &&
-                            !tt_.route_cars_allowed_per_section_[r][kFwd ? stop_idx - 1
+                            !this->tt_.route_cars_allowed_per_section_[r][kFwd ? stop_idx - 1
                             : stop_idx]) {
                             et[v] = {};
                             v_offset[v] = 0;
@@ -1451,7 +1452,7 @@ namespace nigiri::routing {
                     }
 
                     if constexpr (WithSectionWheelchairFilter) {
-                        if (!is_first && !tt_.route_wheelchair_accessibility_per_section_
+                        if (!is_first && !this->tt_.route_wheelchair_accessibility_per_section_
                             [r][kFwd ? stop_idx - 1 : stop_idx]) {
                             et[v] = {};
                             v_offset[v] = 0;
@@ -1495,11 +1496,11 @@ namespace nigiri::routing {
                                 "┊ │k={} v={}->{}    name={}, dbg={}, time_by_transport={}, "
                                 "BETTER THAN current_best={} => update, {} marking station "
                                 "{}!\n",
-                                k, v, target_v, tt_.transport_name(et[v].t_idx_),
-                                tt_.dbg(et[v].t_idx_), to_unix(by_transport),
+                                k, v, target_v, this->tt_.transport_name(et[v].t_idx_),
+                                this->tt_.dbg(et[v].t_idx_), to_unix(by_transport),
                                 to_unix(current_best[v]),
                                 !is_better(by_transport, current_best[v]) ? "NOT" : "",
-                                loc{ tt_, stp.location_idx() });
+                                loc{ this->tt_, stp.location_idx() });
 
                             ++stats_.n_earliest_arrival_updated_by_route_;
                             new_tmp_[l_idx][target_v].add(get_best(by_transport));
@@ -1519,12 +1520,12 @@ namespace nigiri::routing {
                                 "is_better(by_transport={}={}, time_at_dest_={}={})={}, "
                                 "reachable={}, "
                                 "is_better(lb={}={}, time_at_dest_={}={})={})!\n",
-                                k, v, target_v, loc{ tt_, location_idx_t{l_idx} },
-                                tt_.transport_name(et[v].t_idx_), tt_.dbg(et[v].t_idx_),
+                                k, v, target_v, loc{ this->tt_, location_idx_t{l_idx} },
+                                this->tt_.transport_name(et[v].t_idx_), this->tt_.dbg(et[v].t_idx_),
                                 to_unix(by_transport),
                                 to_unix(round_times_[k - 1][l_idx][target_v].get_any_time()),
                                 to_unix(new_best_[l_idx][target_v].get_any_time()), to_unix(new_tmp_[l_idx][target_v].get_any_time()),
-                                to_unix(current_best[v]), loc{ tt_, location_idx_t{l_idx} },
+                                to_unix(current_best[v]), loc{ this->tt_, location_idx_t{l_idx} },
                                 lb_[l_idx], to_unix(time_at_dest_[k].get_any_time()),
                                 to_unix(clamp(by_transport + dir(lb_[l_idx]))), by_transport,
                                 to_unix(by_transport), current_best[v],
@@ -1608,7 +1609,7 @@ namespace nigiri::routing {
             location_idx_t const l) {
             ++stats_.n_earliest_trip_calls_;
 
-            auto const event_times = tt_.event_times_at_stop(
+            auto const event_times = this->tt_.event_times_at_stop(
                 r, stop_idx, kFwd ? event_type::kDep : event_type::kArr);
 
             auto const seek_first_day = [&]() {
@@ -1620,14 +1621,14 @@ namespace nigiri::routing {
                 };
 
             trace("┊ │k={}    et: current_best_at_stop={}, stop_idx={}, location={}\n",
-                k, tt_.to_unixtime(day_at_stop, mam_at_stop), stop_idx,
-                loc{ tt_, stop{tt_.route_location_seq_[r][stop_idx]}.location_idx() });
+                k, this->tt_.to_unixtime(day_at_stop, mam_at_stop), stop_idx,
+                loc{ this->tt_, stop{this->tt_.route_location_seq_[r][stop_idx]}.location_idx() });
 
             auto const n_days_to_iterate = kMaxTravelTime / std::chrono::days{ 1 } + 1U;
             for (auto i = day_idx_t::value_t{ 0U }; i != n_days_to_iterate; ++i) {
                 auto const day = kFwd ? day_at_stop + i : day_at_stop - i;
 
-                if (!tt_.is_route_active(r, day)) {
+                if (!this->tt_.is_route_active(r, day)) {
                     continue;
                 }
 
@@ -1649,7 +1650,7 @@ namespace nigiri::routing {
                             "┊ │k={}      => name={}, dbg={}, day={}={}, best_mam={}, "
                             "transport_mam={}, transport_time={} => TIME AT DEST {} IS "
                             "BETTER!\n",
-                            k, tt_.transport_name(tt_.route_transport_ranges_[r][t_offset]),
+                            k, this->tt_.transport_name(this->tt_.route_transport_ranges_[r][t_offset]),
                             tt_.dbg(tt_.route_transport_ranges_[r][t_offset]), day,
                             tt_.to_unixtime(day, 0_minutes), mam_at_stop, ev_mam,
                             tt_.to_unixtime(day, duration_t{ ev_mam }),
@@ -1749,7 +1750,8 @@ namespace nigiri::routing {
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
         int mcraptor<SearchDir, Rt, Vias, Search>::as_int(day_idx_t const d) const { return static_cast<int>(d.v_); }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search, typename T>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <typename T>
         auto mcraptor<SearchDir, Rt, Vias, Search>::get_begin_it(T const& t) {
             if constexpr (kFwd) {
                 return t.begin();
@@ -1759,7 +1761,8 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search, typename T>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <typename T>
         auto mcraptor<SearchDir, Rt, Vias, Search>::get_end_it(T const& t) {
             if constexpr (kFwd) {
                 return t.end();
