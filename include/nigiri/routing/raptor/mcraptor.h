@@ -268,8 +268,8 @@ namespace nigiri::routing {
         }
 
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
-        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::is_invalid() {
-            return be.time_ == kInvalid;
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::is_invalid() const{
+            return this->time_ == kInvalid;
         }
 
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
@@ -391,7 +391,8 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode, typename... Args>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        template <typename... Args>
         mcraptor<SearchDir, Rt, Vias, SearchMode>::bag mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::copy(Args... t) const {
             bag ret = bag();
             ret.add(*this);
@@ -523,7 +524,7 @@ namespace nigiri::routing {
 
         #pragma region public_functions
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
-        algo_stats_t mcraptor<SearchDir, Rt, Vias, SearchMode>::get_stats() const { return stats_; }
+        raptor_stats mcraptor<SearchDir, Rt, Vias, SearchMode>::get_stats() const { return stats_; }
 
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         void mcraptor<SearchDir, Rt, Vias, SearchMode>::reset_arrivals() {
@@ -1012,7 +1013,7 @@ namespace nigiri::routing {
 
                         auto const fp_target_time = tmp_bag.copy(dir(adjusted_transfer_time(transfer_time_settings_,
                             fp.duration().count()) +
-                            stay.count())));
+                            stay.count()));
 
             if (!new_best_[target][target_v].is_better(fp_target_time) &&
                 fp_target_time.is_better(time_at_dest_[k])) {
@@ -1189,7 +1190,7 @@ namespace nigiri::routing {
                     if constexpr (Vias != 0U) {
                         constexpr auto v = Vias - 1U;
                         if (!new_tmp_[i][v].is_invalid() && is_via_[v][i]) {
-                            auto const end_time = new_tmp_[i][v].copy(dir(via_stops_[v].stay_.count()), dir(dist_to_end_[i])));
+                            auto const end_time = new_tmp_[i][v].copy(dir(via_stops_[v].stay_.count()), dir(dist_to_end_[i]));
 
             trace_upd(
                 "┊ ├k={}, INTERMODAL FOOTPATH FROM LAST VIA: ({}, tmp={}) "
