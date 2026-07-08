@@ -31,177 +31,56 @@ namespace nigiri::routing {
             bool flag = true;
 
 
-            bag_entry(delta_t time) : time_(time) {
-                #ifdef kFalseFlag
-                flag = (static_cast<unsigned long long>(time_) % 2); // prefer even (only for testing)
-                #endif
-            }
+            bag_entry(delta_t time) : time_(time);
 
-            bool is_invalid() const {
-                return time_ == kInvalid;
-            }
+            bool is_invalid() const;
 
-            bool operator<=(const delta_t time) const {
-                return kFwd ? (time_ <= time) : (time_ >= time);
-            }
+            bool operator<=(const delta_t time) const;
 
-            bool operator<=(const bag_entry& cmp) const {
-                return kFwd ? (time_ <= cmp.time_) : (time_ >= cmp.time_);
-            }
+            bool operator<=(const bag_entry& cmp) const;
 
-            bool operator==(const bag_entry& cmp) const {
-                return time_ == cmp.time_;
-            }
+            bool operator==(const bag_entry& cmp) const;
 
-            bool operator<(const delta_t time) const {
-                return kFwd ? (time_ < time) : (time_ > time);
-            }
+            bool operator<(const delta_t time) const;
 
-            bool operator<(const bag_entry& cmp) const {
-                return kFwd ? (time_ < cmp.time_) : (time_ > cmp.time_);
-            }
-
+            bool operator<(const bag_entry& cmp) const;
         };
 
         struct bag {
             std::vector<bag_entry> pareto_set;
 
-            bag(delta_t t) {
-                pareto_set.clear();
-                if (t != kInvalid) {
-                    pareto_set.push_back(bag_entry(t));
-                }
-            }
+            bag(delta_t t);
 
-            bag(bag_entry be) {
-                pareto_set.push_back(be);
-            }
+            bag(bag_entry be);
 
-            bag() {
-                pareto_set.clear();
-            }
+            bag();
 
-            bool is_better(bag b) const {
-                for (auto this_ele : pareto_set) {
-                    for (auto b_ele : b.pareto_set) {
-                        if (b_ele < this_ele)
-                            return false;
-                    }
-                }
-                return true;
-            }
+            bool is_better(bag b) const;
 
-            bool is_invalid() const {
-                return pareto_set.empty();
-            }
+            bool is_invalid() const;
 
-            bool is_better(delta_t time) const {
-                for (auto e : pareto_set)
-                    if (!(e < time)) return false;
-                return true;
-            }
+            bool is_better(delta_t time) const;
 
-            bool is_better_with_offset(delta_t offset, bag b) {
-                for (auto this_ele : pareto_set) {
-                    for (auto b_ele : b.pareto_set) {
-                        bag_entry offset_ele = bag_entry(this_ele.time_ + offset);
-                        if (!(offset_ele < b_ele))
-                            return false;
-                    }
-                }
-                return true;
-            }
+            bool is_better_with_offset(delta_t offset, bag b);return true;
+            
 
-            void add(bag_entry be) {
+            void add(bag_entry be);
 
-                if (be.is_invalid()) {
-                    return;
-                }
+            void add(delta_t t);
 
-                std::vector<bag_entry> bad_entries;
-                bool should_add = false;
-                for (auto elem : pareto_set)
-                {
-                    if (be <= elem) {
-                        should_add = true;
-                        bad_entries.push_back(elem);
-                    }
-                }
-
-                pareto_set.erase(std::remove_if(pareto_set.begin()
-                    , pareto_set.end()
-                    , [&](auto const& toDelete) { return std::find(bad_entries.begin(), bad_entries.end(), toDelete) != bad_entries.end();})
-                    , pareto_set.end());
-                if(should_add) pareto_set.push_back(be);
-            }
-
-            void add(delta_t t) {
-                if (t == kInvalid) {
-                    return;
-                }
-
-                std::vector<bag_entry> bad_entries;
-                bool should_add = false;
-                for (auto elem : pareto_set)
-                {
-                    if (!(elem <= t)) {
-                        should_add = true;
-                        bad_entries.push_back(elem);
-                    }
-                }
-
-                pareto_set.erase(std::remove_if(pareto_set.begin()
-                    , pareto_set.end()
-                    , [&](auto const& toDelete) { return std::find(bad_entries.begin(), bad_entries.end(), toDelete) != bad_entries.end();})
-                    , pareto_set.end());
-                if(should_add) pareto_set.push_back(bag_entry(t));
-            }
-
-            void add(bag bg) {
-                for (auto elem : bg.pareto_set) {
-                    add(elem);
-                }
-            }
+            void add(bag bg);
 
             template <typename... Args>
-            bag copy(Args... t) {
-                bag ret = bag();
-                ret.add(*this);
-                for (auto e : ret.pareto_set) {
-                    e.time_ = clamp((e.time_ + ... + t));
-                }
-                return ret;
-            }
+            bag copy(Args... t);
 
             // Depricated
-            delta_t get_any_time() {
-                if (pareto_set.empty()) {
-                    return delta_t{ kInvalid };
-                }
-
-                return pareto_set.at(0).time_;
-            }
+            delta_t get_any_time();
 
             // Depricated 
-            void replace_any_time(delta_t t) {
-                if (pareto_set.empty()) {
-                    pareto_set.push_back(bag_entry(t));
-                    return;
-                }
-
-                pareto_set.at(0).time_ = t;
-            }
+            void replace_any_time(delta_t t);
 
             // Depricated
-            void replace_time(delta_t t) {
-                if (t == kInvalid) {
-                    return;
-                }
-
-                if (t < get_any_time()) {
-                    replace_any_time(t);
-                }
-            }
+            void replace_time(delta_t t);
 
 
         };
@@ -1581,5 +1460,181 @@ namespace nigiri::routing {
         transfer_time_settings transfer_time_settings_;
         #pragma endregion
     };
+
+#pragma region struct_function_definitions
+
+    #pragma region bag_entry
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::bag_entry(delta_t time) : time_(time) {
+            #ifdef kFalseFlag
+            flag = (static_cast<unsigned long long>(time_) % 2); // prefer even (only for testing)
+            #endif
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::is_invalid(mcraptor::bag_entry const& be) {
+            return be.time_ == kInvalid;
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::operator<=(const delta_t time) const {
+            return kFwd ? (time_ <= time) : (time_ >= time);
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::operator<=(const bag_entry& cmp) const {
+            return kFwd ? (time_ <= cmp.time_) : (time_ >= cmp.time_);
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::operator<(const delta_t time) const {
+            return kFwd ? (time_ < time) : (time_ > time);
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::operator<(const bag_entry& cmp) const {
+            return kFwd ? (time_ < cmp.time_) : (time_ > cmp.time_);
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::operator==(const bag_entry& cmp) const {
+            return time_ == cmp.time_;
+        }
+#pragma endregion
+
+    #pragma region bag
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::bag(delta_t t) {
+            pareto_set.clear();
+            if (t != kInvalid) {
+                pareto_set.push_back(bag_entry(t));
+            }
+        }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::bag(bag_entry be) {
+            pareto_set.push_back(be);
+        }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::bag() {
+            pareto_set.clear();
+        }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::is_better(bag b) const {
+            for (auto this_ele : pareto_set) {
+                for (auto b_ele : b.pareto_set) {
+                    if (b_ele < this_ele)
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::is_invalid() const {
+            for (auto this_ele : pareto_set) {
+                if (!this_ele.is_invalid())
+                    return false;
+            }
+            return true;
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::is_better(delta_t time) const {
+            for (auto e : pareto_set)
+                if (!(e < time)) return false;
+            return true;
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::is_better_with_offset(delta_t offset, bag b) {
+            for (auto this_ele : pareto_set) {
+                for (auto b_ele : b.pareto_set) {
+                    bag_entry offset_ele = bag_entry(this_ele.time_ + offset);
+                    if (!(offset_ele < b_ele))
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::add(bag_entry be) {
+            if (be.is_invalid()) {
+                return;
+            }
+            std::vector<bag_entry> bad_entries;
+            bool should_add = true;
+            for (auto elem : pareto_set) {
+                if (be <= elem) {
+                    should_add = false;
+                    break;
+                }
+                if (elem <= be) {
+                    bad_entries.push_back(elem);
+                }
+            }
+            pareto_set.erase(std::remove_if(pareto_set.begin()
+                , pareto_set.end()
+                , [&](auto const& toDelete) { return std::find(bad_entries.begin(), bad_entries.end(), toDelete) != bad_entries.end();})
+                , pareto_set.end());
+            if (should_add) pareto_set.push_back(be);
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::add(delta_t t) {
+            if (t == kInvalid) {
+                return;
+            }
+            add(bag_entry(t));
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::add(bag bg) {
+            for (auto elem : bg.pareto_set) {
+                add(elem);
+            }
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode, typename... Args>
+        bag mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::copy(Args... t) {
+            bag ret = bag();
+            ret.add(*this);
+            for (auto& e : ret.pareto_set) {
+                e.time_ = clamp((e.time_ + ... + t));
+            }
+            return ret;
+        }
+
+        //Depricated
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        delta_t mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::get_any_time() {
+            if (pareto_set.empty()) {
+                return delta_t{ kInvalid };
+            }
+            return pareto_set.at(0).time_;
+        }
+
+        //Depricated
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::replace_any_time(delta_t t) {
+            if (pareto_set.empty()) {
+                pareto_set.push_back(bag_entry(t));
+                return;
+            }
+            pareto_set.at(0).time_ = t;
+        }
+
+        //Depricated
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::replace_time(delta_t t) {
+            if (t == kInvalid) {
+                return;
+            }
+            if (t < get_any_time()) {
+                replace_any_time(t);
+            }
+        }
+    #pragma endregion
+#pragma endregion
 
 }  // namespace nigiri::routing
