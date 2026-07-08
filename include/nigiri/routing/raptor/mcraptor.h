@@ -135,214 +135,21 @@ namespace nigiri::routing {
         #pragma endregion
 
         #pragma region public_functions
-        algo_stats_t get_stats() const { return stats_; }
+        algo_stats_t get_stats() const;
 
-        void reset_arrivals() {
-            utl::fill(time_at_dest_, bag());
-            //round_times_.reset(kInvalidArray);
-            for (auto ke : round_times_) {
-                for (auto& ie : ke) {
-                    for (auto& ve : ie) {
-                        ve = bag();
-                    }
-                }
-            }
-        }
+        void reset_arrivals();
 
-        void next_start_time() {
-            utl::fill(new_best_, []() {
-                auto a = std::array<bag, Vias + 1>{};
-                a.fill(bag());
-                return a;
-                }());
-            utl::fill(new_tmp_, []() {
-                auto a = std::array<bag, Vias + 1>{};
-                a.fill(bag());
-                return a;
-                }());
-            utl::fill(state_.prev_station_mark_.blocks_, 0U);
-            utl::fill(state_.station_mark_.blocks_, 0U);
-            utl::fill(state_.route_mark_.blocks_, 0U);
-            if constexpr (Rt) {
-                utl::fill(state_.rt_transport_mark_.blocks_, 0U);
-            }
-        }
+        void next_start_time();
 
-        void add_start(location_idx_t const l, unixtime_t const t) {
-            auto const v = (Vias != 0 && is_via_[0][to_idx(l)]) ? 1U : 0U;
-            trace_upd(
-                "adding start [fwd={}] {}: {}, v={} [current: best={}, round={} => "
-                "best={}]\n",
-                kFwd, loc{ tt_, l }, t, v, to_unix(new_best_[to_idx(l)][v]),
-                to_unix(round_times_[0U][to_idx(l)][v].get_any_time()),
-                get_best(t, to_unix(new_best_[to_idx(l)][v])));
-            new_best_[to_idx(l)][v].add(unix_to_delta(base(), t));
-            round_times_[0U][to_idx(l)][v].add( unix_to_delta(base(), t));
-            state_.station_mark_.set(to_idx(l), true);
-        }
+        void add_start(location_idx_t const l, unixtime_t const t);
 
         void execute(unixtime_t const start_time,
             std::uint8_t const max_transfers,
             unixtime_t const worst_time_at_dest,
             profile_idx_t const prf_idx,
-            pareto_set<journey>& results) {
-            auto const end_k = std::min(max_transfers, kMaxTransfers) + 2U;
+            pareto_set<journey>& results);
 
-            auto const d_worst_at_dest = unix_to_delta(base(), worst_time_at_dest);
-            for (auto& time_at_dest : time_at_dest_) {
-                time_at_dest.add(d_worst_at_dest);
-            }
-
-            trace_print_init_state();
-
-            for (auto k = 1U; k != end_k; ++k) {
-                for (auto i = 0U; i != n_locations_; ++i) {
-                    for (auto v = 0U; v != Vias + 1; ++v) {
-                        // new_best_[i][v].add(round_time_[k][i][v]);
-                        new_best_[i][v].add(round_times_[k][i][v]);
-                    }
-                }
-                //COMMENT: bestimmt bestmöglichen Ankunftzeit für i
-                is_dest_.for_each_set_bit([&](std::uint64_t const i) {
-                    update_time_at_dest(k, new_best_[i][Vias]);
-                    });
-
-                auto any_marked = false;
-                state_.station_mark_.for_each_set_bit([&](std::uint64_t const i) {
-                    //COMMENT: markiert die Station (falls es Umstiegsmöglichkeiten gibt) und bestimmt alle Routen, die von der markierten Stationen ausgehn
-                    for (auto const& r : tt_.location_routes_[location_idx_t{ i }]) {
-                        any_marked = true;
-                        state_.route_mark_.set(to_idx(r), true);
-                    }
-                    if constexpr (Rt) {
-                        //COMMENT: Echtzeit-Fall
-                        for (auto const& rt_t :
-                            rtt_->location_rt_transports_[location_idx_t{ i }]) {
-                            any_marked = true;
-                            state_.rt_transport_mark_.set(to_idx(rt_t), true);
-                        }
-                    }
-                    });
-
-                if (!any_marked) {
-                    trace_print_state_after_round();
-                    break;
-                }
-
-                std::swap(state_.prev_station_mark_, state_.station_mark_);
-                utl::fill(state_.station_mark_.blocks_, 0U);
-
-                bool const clasz_filter = allowed_claszes_ != all_clasz_allowed();
-                uint8_t const filters =
-                    static_cast<uint8_t>(clasz_filter << 3) |
-                    static_cast<uint8_t>(require_bike_transport_ << 2) |
-                    static_cast<uint8_t>(require_car_transport_ << 1) |
-                    static_cast<uint8_t>(is_wheelchair_ << 0);
-
-                any_marked |= [&]() {
-                    switch (filters) {
-                    case 0b0000: return loop_routes<false, false, false, false>(k);
-                    case 0b0001: return loop_routes<false, false, false, true>(k);
-                    case 0b0010: return loop_routes<false, false, true, false>(k);
-                    case 0b0011: return loop_routes<false, false, true, true>(k);
-                    case 0b0100: return loop_routes<false, true, false, false>(k);
-                    case 0b0101: return loop_routes<false, true, false, true>(k);
-                    case 0b0110: return loop_routes<false, true, true, false>(k);
-                    case 0b0111: return loop_routes<false, true, true, true>(k);
-                    case 0b1000: return loop_routes<true, false, false, false>(k);
-                    case 0b1001: return loop_routes<true, false, false, true>(k);
-                    case 0b1010: return loop_routes<true, false, true, false>(k);
-                    case 0b1011: return loop_routes<true, false, true, true>(k);
-                    case 0b1100: return loop_routes<true, true, false, false>(k);
-                    case 0b1101: return loop_routes<true, true, false, true>(k);
-                    case 0b1110: return loop_routes<true, true, true, false>(k);
-                    case 0b1111: return loop_routes<true, true, true, true>(k);
-                    default: std::unreachable();
-                    }
-                    }();
-
-                if constexpr (Rt) {
-                    any_marked |= [&]() {
-                        switch (filters) {
-                        case 0b0000: return loop_rt_routes<false, false, false, false>(k);
-                        case 0b0001: return loop_rt_routes<false, false, false, true>(k);
-                        case 0b0010: return loop_rt_routes<false, false, true, false>(k);
-                        case 0b0011: return loop_rt_routes<false, false, true, true>(k);
-                        case 0b0100: return loop_rt_routes<false, true, false, false>(k);
-                        case 0b0101: return loop_rt_routes<false, true, false, true>(k);
-                        case 0b0110: return loop_rt_routes<false, true, true, false>(k);
-                        case 0b0111: return loop_rt_routes<false, true, true, true>(k);
-                        case 0b1000: return loop_rt_routes<true, false, false, false>(k);
-                        case 0b1001: return loop_rt_routes<true, false, false, true>(k);
-                        case 0b1010: return loop_rt_routes<true, false, true, false>(k);
-                        case 0b1011: return loop_rt_routes<true, false, true, true>(k);
-                        case 0b1100: return loop_rt_routes<true, true, false, false>(k);
-                        case 0b1101: return loop_rt_routes<true, true, false, true>(k);
-                        case 0b1110: return loop_rt_routes<true, true, true, false>(k);
-                        case 0b1111: return loop_rt_routes<true, true, true, true>(k);
-                        default: std::unreachable();
-                        }
-                        }();
-                }
-
-                if (!any_marked) {
-                    trace_print_state_after_round();
-                    break;
-                }
-
-                utl::fill(state_.route_mark_.blocks_, 0U);
-                utl::fill(state_.rt_transport_mark_.blocks_, 0U);
-
-                std::swap(state_.prev_station_mark_, state_.station_mark_);
-                utl::fill(state_.station_mark_.blocks_, 0U);
-
-                update_transfers(k);
-                update_intermodal_footpaths(k);
-                update_footpaths(k, prf_idx);
-                update_td_offsets(k, prf_idx);
-
-                trace_print_state_after_round();
-            }
-
-            if constexpr (SearchMode == search_mode::kOneToAll) {
-                return;
-            }
-
-            //COMMENT: hier werden die journeys erstellt
-            is_dest_.for_each_set_bit([&](auto const i) {
-                for (auto k = 1U; k != end_k; ++k) {
-                    auto const dest_time = round_times_[k][i][Vias];
-                    if (!dest_time.is_invalid()) {
-                        trace("ADDING JOURNEY: start={}, dest={} @ {}, transfers={}\n",
-                            start_time, delta_to_unix(base(), round_times_[k][i][Vias].get_any_time()),
-                            loc{ tt_, location_idx_t{i} }, k - 1);
-                        for (auto label : dest_time.pareto_set) {
-                            // TODO: added criteria should also be added in journey
-                            auto const [optimal, it, dominated_by] = results.add(
-                                journey{ .legs_ = {},
-                                        .start_time_ = start_time,
-                                        .dest_time_ = delta_to_unix(base(), label.time_),
-                                        .dest_ = location_idx_t{i},
-                                        .transfers_ = static_cast<std::uint8_t>(k - 1) });
-                        }
-                        if (!optimal) {
-                            trace("  DOMINATED BY: start={}, dest={} @ {}, transfers={}\n",
-                                dominated_by->start_time_, dominated_by->dest_time_,
-                                loc{ tt_, dominated_by->dest_ }, dominated_by->transfers_);
-                        }
-                    }
-                }
-                });
-        }
-
-        void reconstruct(query const& q, journey& j) {
-            if constexpr (SearchMode == search_mode::kOneToAll) {
-                return;
-            }
-            trace("reconstruct({} - {}, {} transfers", j.departure_time(),
-                j.arrival_time(), j.transfers_);
-            reconstruct_journey<SearchDir>(tt_, rtt_, q, state_, j, base(), base_);
-        }
+        void reconstruct(query const& q, journey& j);
         #pragma endregion
     private:
         date::sys_days base() const {
@@ -1569,8 +1376,9 @@ namespace nigiri::routing {
     #pragma endregion
 
     #pragma region mcraptor
+        #pragma region constructor
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        mcraptor<SearchDir, Rt, Vias, Search>(
+        mcraptor<SearchDir, Rt, Vias, Search>::mcraptor(
             timetable const& tt,
             rt_timetable const* rtt,
             raptor_state& state,
@@ -1654,6 +1462,225 @@ namespace nigiri::routing {
             }
             #pragma endregion
         }
+        #pragma endregion
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        algo_stats_t mcraptor<SearchDir, Rt, Vias, Search>::get_stats() const { return stats_; }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        void mcraptor<SearchDir, Rt, Vias, Search>::reset_arrivals() {
+            utl::fill(time_at_dest_, bag());
+            //round_times_.reset(kInvalidArray);
+            for (auto ke : round_times_) {
+                for (auto& ie : ke) {
+                    for (auto& ve : ie) {
+                        ve = bag();
+                    }
+                }
+            }
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        void mcraptor<SearchDir, Rt, Vias, Search>::next_start_time() {
+            utl::fill(new_best_, []() {
+                auto a = std::array<bag, Vias + 1>{};
+                a.fill(bag());
+                return a;
+                }());
+            utl::fill(new_tmp_, []() {
+                auto a = std::array<bag, Vias + 1>{};
+                a.fill(bag());
+                return a;
+                }());
+            utl::fill(state_.prev_station_mark_.blocks_, 0U);
+            utl::fill(state_.station_mark_.blocks_, 0U);
+            utl::fill(state_.route_mark_.blocks_, 0U);
+            if constexpr (Rt) {
+                utl::fill(state_.rt_transport_mark_.blocks_, 0U);
+            }
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        void mcraptor<SearchDir, Rt, Vias, Search>::add_start(location_idx_t const l, unixtime_t const t) {
+            auto const v = (Vias != 0 && is_via_[0][to_idx(l)]) ? 1U : 0U;
+            trace_upd(
+                "adding start [fwd={}] {}: {}, v={} [current: best={}, round={} => "
+                "best={}]\n",
+                kFwd, loc{ tt_, l }, t, v, to_unix(new_best_[to_idx(l)][v]),
+                to_unix(round_times_[0U][to_idx(l)][v].get_any_time()),
+                get_best(t, to_unix(new_best_[to_idx(l)][v])));
+            new_best_[to_idx(l)][v].add(unix_to_delta(base(), t));
+            round_times_[0U][to_idx(l)][v].add(unix_to_delta(base(), t));
+            state_.station_mark_.set(to_idx(l), true);
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        void mcraptor<SearchDir, Rt, Vias, Search>::execute(unixtime_t const start_time,
+            std::uint8_t const max_transfers,
+            unixtime_t const worst_time_at_dest,
+            profile_idx_t const prf_idx,
+            pareto_set<journey>& results) {
+            auto const end_k = std::min(max_transfers, kMaxTransfers) + 2U;
+
+            auto const d_worst_at_dest = unix_to_delta(base(), worst_time_at_dest);
+            for (auto& time_at_dest : time_at_dest_) {
+                time_at_dest.add(d_worst_at_dest);
+            }
+
+            trace_print_init_state();
+
+            for (auto k = 1U; k != end_k; ++k) {
+                for (auto i = 0U; i != n_locations_; ++i) {
+                    for (auto v = 0U; v != Vias + 1; ++v) {
+                        // new_best_[i][v].add(round_time_[k][i][v]);
+                        new_best_[i][v].add(round_times_[k][i][v]);
+                    }
+                }
+                //COMMENT: bestimmt bestmöglichen Ankunftzeit für i
+                is_dest_.for_each_set_bit([&](std::uint64_t const i) {
+                    update_time_at_dest(k, new_best_[i][Vias]);
+                    });
+
+                auto any_marked = false;
+                state_.station_mark_.for_each_set_bit([&](std::uint64_t const i) {
+                    //COMMENT: markiert die Station (falls es Umstiegsmöglichkeiten gibt) und bestimmt alle Routen, die von der markierten Stationen ausgehn
+                    for (auto const& r : tt_.location_routes_[location_idx_t{ i }]) {
+                        any_marked = true;
+                        state_.route_mark_.set(to_idx(r), true);
+                    }
+                    if constexpr (Rt) {
+                        //COMMENT: Echtzeit-Fall
+                        for (auto const& rt_t :
+                            rtt_->location_rt_transports_[location_idx_t{ i }]) {
+                            any_marked = true;
+                            state_.rt_transport_mark_.set(to_idx(rt_t), true);
+                        }
+                    }
+                    });
+
+                if (!any_marked) {
+                    trace_print_state_after_round();
+                    break;
+                }
+
+                std::swap(state_.prev_station_mark_, state_.station_mark_);
+                utl::fill(state_.station_mark_.blocks_, 0U);
+
+                bool const clasz_filter = allowed_claszes_ != all_clasz_allowed();
+                uint8_t const filters =
+                    static_cast<uint8_t>(clasz_filter << 3) |
+                    static_cast<uint8_t>(require_bike_transport_ << 2) |
+                    static_cast<uint8_t>(require_car_transport_ << 1) |
+                    static_cast<uint8_t>(is_wheelchair_ << 0);
+
+                any_marked |= [&]() {
+                    switch (filters) {
+                    case 0b0000: return loop_routes<false, false, false, false>(k);
+                    case 0b0001: return loop_routes<false, false, false, true>(k);
+                    case 0b0010: return loop_routes<false, false, true, false>(k);
+                    case 0b0011: return loop_routes<false, false, true, true>(k);
+                    case 0b0100: return loop_routes<false, true, false, false>(k);
+                    case 0b0101: return loop_routes<false, true, false, true>(k);
+                    case 0b0110: return loop_routes<false, true, true, false>(k);
+                    case 0b0111: return loop_routes<false, true, true, true>(k);
+                    case 0b1000: return loop_routes<true, false, false, false>(k);
+                    case 0b1001: return loop_routes<true, false, false, true>(k);
+                    case 0b1010: return loop_routes<true, false, true, false>(k);
+                    case 0b1011: return loop_routes<true, false, true, true>(k);
+                    case 0b1100: return loop_routes<true, true, false, false>(k);
+                    case 0b1101: return loop_routes<true, true, false, true>(k);
+                    case 0b1110: return loop_routes<true, true, true, false>(k);
+                    case 0b1111: return loop_routes<true, true, true, true>(k);
+                    default: std::unreachable();
+                    }
+                    }();
+
+                if constexpr (Rt) {
+                    any_marked |= [&]() {
+                        switch (filters) {
+                        case 0b0000: return loop_rt_routes<false, false, false, false>(k);
+                        case 0b0001: return loop_rt_routes<false, false, false, true>(k);
+                        case 0b0010: return loop_rt_routes<false, false, true, false>(k);
+                        case 0b0011: return loop_rt_routes<false, false, true, true>(k);
+                        case 0b0100: return loop_rt_routes<false, true, false, false>(k);
+                        case 0b0101: return loop_rt_routes<false, true, false, true>(k);
+                        case 0b0110: return loop_rt_routes<false, true, true, false>(k);
+                        case 0b0111: return loop_rt_routes<false, true, true, true>(k);
+                        case 0b1000: return loop_rt_routes<true, false, false, false>(k);
+                        case 0b1001: return loop_rt_routes<true, false, false, true>(k);
+                        case 0b1010: return loop_rt_routes<true, false, true, false>(k);
+                        case 0b1011: return loop_rt_routes<true, false, true, true>(k);
+                        case 0b1100: return loop_rt_routes<true, true, false, false>(k);
+                        case 0b1101: return loop_rt_routes<true, true, false, true>(k);
+                        case 0b1110: return loop_rt_routes<true, true, true, false>(k);
+                        case 0b1111: return loop_rt_routes<true, true, true, true>(k);
+                        default: std::unreachable();
+                        }
+                        }();
+                }
+
+                if (!any_marked) {
+                    trace_print_state_after_round();
+                    break;
+                }
+
+                utl::fill(state_.route_mark_.blocks_, 0U);
+                utl::fill(state_.rt_transport_mark_.blocks_, 0U);
+
+                std::swap(state_.prev_station_mark_, state_.station_mark_);
+                utl::fill(state_.station_mark_.blocks_, 0U);
+
+                update_transfers(k);
+                update_intermodal_footpaths(k);
+                update_footpaths(k, prf_idx);
+                update_td_offsets(k, prf_idx);
+
+                trace_print_state_after_round();
+            }
+
+            if constexpr (SearchMode == search_mode::kOneToAll) {
+                return;
+            }
+
+            //COMMENT: hier werden die journeys erstellt
+            is_dest_.for_each_set_bit([&](auto const i) {
+                for (auto k = 1U; k != end_k; ++k) {
+                    auto const dest_time = round_times_[k][i][Vias];
+                    if (!dest_time.is_invalid()) {
+                        trace("ADDING JOURNEY: start={}, dest={} @ {}, transfers={}\n",
+                            start_time, delta_to_unix(base(), round_times_[k][i][Vias].get_any_time()),
+                            loc{ tt_, location_idx_t{i} }, k - 1);
+                        for (auto label : dest_time.pareto_set) {
+                            // TODO: added criteria should also be added in journey
+                            auto const [optimal, it, dominated_by] = results.add(
+                                journey{ .legs_ = {},
+                                        .start_time_ = start_time,
+                                        .dest_time_ = delta_to_unix(base(), label.time_),
+                                        .dest_ = location_idx_t{i},
+                                        .transfers_ = static_cast<std::uint8_t>(k - 1) });
+                        }
+                        if (!optimal) {
+                            trace("  DOMINATED BY: start={}, dest={} @ {}, transfers={}\n",
+                                dominated_by->start_time_, dominated_by->dest_time_,
+                                loc{ tt_, dominated_by->dest_ }, dominated_by->transfers_);
+                        }
+                    }
+                }
+                });
+        }
+
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        void mcraptor<SearchDir, Rt, Vias, Search>::reconstruct(query const& q, journey& j) {
+            if constexpr (SearchMode == search_mode::kOneToAll) {
+                return;
+            }
+            trace("reconstruct({} - {}, {} transfers", j.departure_time(),
+                j.arrival_time(), j.transfers_);
+            reconstruct_journey<SearchDir>(tt_, rtt_, q, state_, j, base(), base_);
+        }
+        #pragma region public_functions
+
+        #pragma endregion
     #pragma endregion
 
 
