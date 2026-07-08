@@ -31,7 +31,7 @@ namespace nigiri::routing {
             bool flag = true;
 
 
-            bag_entry(delta_t time) : time_(time);
+            bag_entry(delta_t time);
 
             bool is_invalid() const;
 
@@ -61,7 +61,7 @@ namespace nigiri::routing {
 
             bool is_better(delta_t time) const;
 
-            bool is_better_with_offset(delta_t offset, bag b);return true;
+            bool is_better_with_offset(delta_t offset, bag b);
             
 
             void add(bag_entry be);
@@ -131,75 +131,7 @@ namespace nigiri::routing {
             bool const require_bike_transport,
             bool const require_car_transport,
             bool const is_wheelchair,
-            transfer_time_settings const& tts)
-            : tt_{ tt },
-            rtt_{ rtt },
-            n_days_{ tt_.internal_interval_days().size().count() },
-            n_locations_{ tt_.n_locations() },
-            n_routes_{ tt.n_routes() },
-            n_rt_transports_{ Rt ? rtt->n_rt_transports() : 0U },
-            state_{ state.resize(n_locations_, n_routes_, n_rt_transports_) },
-            is_dest_{ is_dest },
-            is_via_{ is_via },
-            dist_to_end_{ dist_to_dest },
-            td_dist_to_end_{ td_dist_to_dest },
-            lb_{ lb },
-            via_stops_{ via_stops },
-            base_{ base },
-            allowed_claszes_{ allowed_claszes },
-            require_bike_transport_{ require_bike_transport },
-            require_car_transport_{ require_car_transport },
-            is_wheelchair_{ is_wheelchair },
-            transfer_time_settings_{ tts } {
-            #pragma region inside constructor
-            //TODO: avoid copy
-            auto all_tmp_times = state.get_tmp<Vias>();
-            auto all_best_times = state.get_best<Vias>();
-
-            new_tmp_.resize(all_tmp_times.size());
-            for (unsigned long i = 0; i < all_tmp_times.size(); ++i) {
-                for (unsigned long v = 0; v < Vias + 1; ++v) {
-                    new_tmp_[i][v] = bag(all_tmp_times[i][v]);
-                }             
-            }
-            new_best_.resize(all_best_times.size());
-            for (unsigned long i = 0; i < all_best_times.size(); ++i) {
-                for (unsigned long v = 0; v < Vias + 1; ++v) {
-                    new_best_[i][v] = bag(all_best_times[i][v]);
-                }
-            }
-
-            auto src_span = state.get_round_times<Vias>();
-            round_times_.clear();
-            for (unsigned long k = 0; k < src_span.n_rows_; ++k) {
-                std::vector<std::array<bag, Vias + 1>> row;
-                for (unsigned long i = 0; i < src_span.n_columns_; ++i) {
-                    std::array<bag, Vias + 1> target_array;
-                    auto src_array = src_span[k][i];
-                    for (unsigned long v = 0; v < Vias + 1; ++v) {
-                        target_array[v] = bag(src_array[v]);
-                    }
-                    row.push_back(target_array);
-                }
-                round_times_.push_back(row);
-            }
-
-            assert(Vias == via_stops_.size());
-            reset_arrivals();
-            if (!dist_to_end_.empty()) {
-                // only used for intermodal queries (dist_to_dest != empty)
-                end_reachable_.resize(n_locations_);
-                for (auto i = 0U; i != dist_to_end_.size(); ++i) {
-                    if (dist_to_end_[i] != kUnreachable) {
-                        end_reachable_.set(i, true);
-                    }
-                }
-                for (auto const& [l, _] : td_dist_to_end_) {
-                    end_reachable_.set(to_idx(l), true);
-                }
-            }
-            #pragma endregion
-        }
+            transfer_time_settings const& tts);
         #pragma endregion
 
         #pragma region public_functions
@@ -1635,6 +1567,96 @@ namespace nigiri::routing {
             }
         }
     #pragma endregion
+
+    #pragma region mcraptor
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        mcraptor<SearchDir, Rt, Vias, Search>(
+            timetable const& tt,
+            rt_timetable const* rtt,
+            raptor_state& state,
+            bitvec& is_dest,
+            std::array<bitvec, kMaxVias>& is_via,
+            std::vector<std::uint16_t>& dist_to_dest,
+            hash_map<location_idx_t, std::vector<td_offset>> const& td_dist_to_dest,
+            std::vector<std::uint16_t>& lb,
+            std::vector<via_stop> const& via_stops,
+            day_idx_t const base,
+            clasz_mask_t const allowed_claszes,
+            bool const require_bike_transport,
+            bool const require_car_transport,
+            bool const is_wheelchair,
+            transfer_time_settings const& tts)
+            : tt_{ tt },
+            rtt_{ rtt },
+            n_days_{ tt_.internal_interval_days().size().count() },
+            n_locations_{ tt_.n_locations() },
+            n_routes_{ tt.n_routes() },
+            n_rt_transports_{ Rt ? rtt->n_rt_transports() : 0U },
+            state_{ state.resize(n_locations_, n_routes_, n_rt_transports_) },
+            is_dest_{ is_dest },
+            is_via_{ is_via },
+            dist_to_end_{ dist_to_dest },
+            td_dist_to_end_{ td_dist_to_dest },
+            lb_{ lb },
+            via_stops_{ via_stops },
+            base_{ base },
+            allowed_claszes_{ allowed_claszes },
+            require_bike_transport_{ require_bike_transport },
+            require_car_transport_{ require_car_transport },
+            is_wheelchair_{ is_wheelchair },
+            transfer_time_settings_{ tts } {
+            #pragma region inside constructor
+            //TODO: avoid copy
+            auto all_tmp_times = state.get_tmp<Vias>();
+            auto all_best_times = state.get_best<Vias>();
+
+            new_tmp_.resize(all_tmp_times.size());
+            for (unsigned long i = 0; i < all_tmp_times.size(); ++i) {
+                for (unsigned long v = 0; v < Vias + 1; ++v) {
+                    new_tmp_[i][v] = bag(all_tmp_times[i][v]);
+                }
+            }
+            new_best_.resize(all_best_times.size());
+            for (unsigned long i = 0; i < all_best_times.size(); ++i) {
+                for (unsigned long v = 0; v < Vias + 1; ++v) {
+                    new_best_[i][v] = bag(all_best_times[i][v]);
+                }
+            }
+
+            auto src_span = state.get_round_times<Vias>();
+            round_times_.clear();
+            for (unsigned long k = 0; k < src_span.n_rows_; ++k) {
+                std::vector<std::array<bag, Vias + 1>> row;
+                for (unsigned long i = 0; i < src_span.n_columns_; ++i) {
+                    std::array<bag, Vias + 1> target_array;
+                    auto src_array = src_span[k][i];
+                    for (unsigned long v = 0; v < Vias + 1; ++v) {
+                        target_array[v] = bag(src_array[v]);
+                    }
+                    row.push_back(target_array);
+                }
+                round_times_.push_back(row);
+            }
+
+            assert(Vias == via_stops_.size());
+            reset_arrivals();
+            if (!dist_to_end_.empty()) {
+                // only used for intermodal queries (dist_to_dest != empty)
+                end_reachable_.resize(n_locations_);
+                for (auto i = 0U; i != dist_to_end_.size(); ++i) {
+                    if (dist_to_end_[i] != kUnreachable) {
+                        end_reachable_.set(i, true);
+                    }
+                }
+                for (auto const& [l, _] : td_dist_to_end_) {
+                    end_reachable_.set(to_idx(l), true);
+                }
+            }
+            #pragma endregion
+        }
+    #pragma endregion
+
+
 #pragma endregion
 
 }  // namespace nigiri::routing
