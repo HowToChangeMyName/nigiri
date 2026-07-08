@@ -71,7 +71,7 @@ namespace nigiri::routing {
             void add(bag bg);
 
             template <typename... Args>
-            bag copy(Args... t);
+            bag copy(Args... t) const;
 
             // Depricated
             delta_t get_any_time();
@@ -268,7 +268,7 @@ namespace nigiri::routing {
         }
 
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
-        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::is_invalid(mcraptor::bag_entry const& be) {
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::bag_entry::is_invalid() {
             return be.time_ == kInvalid;
         }
 
@@ -392,7 +392,7 @@ namespace nigiri::routing {
         }
 
         template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode, typename... Args>
-        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::copy(Args... t) {
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::bag mcraptor<SearchDir, Rt, Vias, SearchMode>::bag::copy(Args... t) const {
             bag ret = bag();
             ret.add(*this);
             for (auto& e : ret.pareto_set) {
@@ -434,8 +434,8 @@ namespace nigiri::routing {
 
     #pragma region mcraptor
         #pragma region constructor
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        mcraptor<SearchDir, Rt, Vias, Search>::mcraptor(
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        mcraptor<SearchDir, Rt, Vias, SearchMode>::mcraptor(
             timetable const& tt,
             rt_timetable const* rtt,
             raptor_state& state,
@@ -522,11 +522,11 @@ namespace nigiri::routing {
         #pragma endregion
 
         #pragma region public_functions
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        algo_stats_t mcraptor<SearchDir, Rt, Vias, Search>::get_stats() const { return stats_; }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        algo_stats_t mcraptor<SearchDir, Rt, Vias, SearchMode>::get_stats() const { return stats_; }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::reset_arrivals() {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::reset_arrivals() {
             utl::fill(time_at_dest_, bag());
             //round_times_.reset(kInvalidArray);
             for (auto ke : round_times_) {
@@ -538,8 +538,8 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::next_start_time() {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::next_start_time() {
             utl::fill(new_best_, []() {
                 auto a = std::array<bag, Vias + 1>{};
                 a.fill(bag());
@@ -558,8 +558,8 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::add_start(location_idx_t const l, unixtime_t const t) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::add_start(location_idx_t const l, unixtime_t const t) {
             auto const v = (Vias != 0 && is_via_[0][to_idx(l)]) ? 1U : 0U;
             trace_upd(
                 "adding start [fwd={}] {}: {}, v={} [current: best={}, round={} => "
@@ -572,8 +572,8 @@ namespace nigiri::routing {
             state_.station_mark_.set(to_idx(l), true);
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::execute(unixtime_t const start_time,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::execute(unixtime_t const start_time,
             std::uint8_t const max_transfers,
             unixtime_t const worst_time_at_dest,
             profile_idx_t const prf_idx,
@@ -727,8 +727,8 @@ namespace nigiri::routing {
                 });
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::reconstruct(query const& q, journey& j) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::reconstruct(query const& q, journey& j) {
             if constexpr (SearchMode == search_mode::kOneToAll) {
                 return;
             }
@@ -740,17 +740,17 @@ namespace nigiri::routing {
         #pragma endregion
 
         #pragma region private_functions
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        date::sys_days mcraptor<SearchDir, Rt, Vias, Search>::base() const {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        date::sys_days mcraptor<SearchDir, Rt, Vias, SearchMode>::base() const {
             return this->tt_.internal_interval_days().from_ + as_int(this->base_) * date::days{ 1 };
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         template <bool WithClaszFilter,
             bool WithBikeFilter,
             bool WithCarFilter,
             bool WithWheelchairFilter>
-        bool mcraptor<SearchDir, Rt, Vias, Search>::loop_routes(unsigned const k) {
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::loop_routes(unsigned const k) {
             auto any_marked = false;
             state_.route_mark_.for_each_set_bit([&](auto const r_idx) {
                 auto const r = route_idx_t{ r_idx };
@@ -828,12 +828,12 @@ namespace nigiri::routing {
             return any_marked;
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         template <bool WithClaszFilter,
             bool WithBikeFilter,
             bool WithCarFilter,
             bool WithWheelchairFilter>
-        bool mcraptor<SearchDir, Rt, Vias, Search>::loop_rt_routes(unsigned const k) {
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::loop_rt_routes(unsigned const k) {
             auto any_marked = false;
             state_.rt_transport_mark_.for_each_set_bit([&](auto const rt_t_idx) {
                 auto const rt_t = rt_transport_idx_t{ rt_t_idx };
@@ -913,8 +913,8 @@ namespace nigiri::routing {
             return any_marked;
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::update_transfers(unsigned const k) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::update_transfers(unsigned const k) {
             state_.prev_station_mark_.for_each_set_bit([&](auto&& i) {
                 for (auto v = 0U; v != Vias + 1; ++v) {
                     auto const tmp_bag = new_tmp_[i][v];
@@ -969,8 +969,8 @@ namespace nigiri::routing {
                 });
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::update_footpaths(unsigned const k, profile_idx_t const prf_idx) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::update_footpaths(unsigned const k, profile_idx_t const prf_idx) {
             state_.prev_station_mark_.for_each_set_bit([&](std::uint64_t const i) {
                 auto const l_idx = location_idx_t{ i };
                 if constexpr (Rt) {
@@ -1064,8 +1064,8 @@ namespace nigiri::routing {
                 });
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::update_td_offsets(unsigned const k, profile_idx_t const prf_idx) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::update_td_offsets(unsigned const k, profile_idx_t const prf_idx) {
             if constexpr (!Rt) {
                 return;
             }
@@ -1164,8 +1164,8 @@ namespace nigiri::routing {
                 });
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::update_intermodal_footpaths(unsigned const k) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::update_intermodal_footpaths(unsigned const k) {
             if (dist_to_end_.empty()) {
                 return;
             }
@@ -1277,11 +1277,11 @@ namespace nigiri::routing {
                 });
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         template <bool WithSectionBikeFilter,
             bool WithSectionCarFilter,
             bool WithSectionWheelchairFilter>
-        bool mcraptor<SearchDir, Rt, Vias, Search>::update_rt_transport(unsigned const k, rt_transport_idx_t const rt_t) {
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::update_rt_transport(unsigned const k, rt_transport_idx_t const rt_t) {
             auto const stop_seq = this->rtt_->rt_transport_location_seq_[rt_t];
             auto et = std::array<bool, Vias + 1>{};
             auto v_offset = std::array<std::size_t, Vias + 1>{};
@@ -1390,11 +1390,11 @@ namespace nigiri::routing {
             return any_marked;
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         template <bool WithSectionBikeFilter,
             bool WithSectionCarFilter,
             bool WithSectionWheelchairFilter>
-        bool mcraptor<SearchDir, Rt, Vias, Search>::update_route(unsigned const k, route_idx_t const r) {
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::update_route(unsigned const k, route_idx_t const r) {
             auto const stop_seq = this->tt_.route_location_seq_[r];
             bool any_marked = false;
 
@@ -1600,8 +1600,8 @@ namespace nigiri::routing {
             return any_marked;
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        transport mcraptor<SearchDir, Rt, Vias, Search>::get_earliest_transport(unsigned const k,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        transport mcraptor<SearchDir, Rt, Vias, SearchMode>::get_earliest_transport(unsigned const k,
             route_idx_t const r,
             stop_idx_t const stop_idx,
             day_idx_t const day_at_stop,
@@ -1694,8 +1694,8 @@ namespace nigiri::routing {
             return {};
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        bool mcraptor<SearchDir, Rt, Vias, Search>::is_transport_active(transport_idx_t const t, day_idx_t const day) const {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::is_transport_active(transport_idx_t const t, day_idx_t const day) const {
             if constexpr (Rt) {
                 return rtt_->is_transport_active(t, day);
             }
@@ -1704,8 +1704,8 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        delta_t mcraptor<SearchDir, Rt, Vias, Search>::time_at_stop(route_idx_t const r,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        delta_t mcraptor<SearchDir, Rt, Vias, SearchMode>::time_at_stop(route_idx_t const r,
             transport const t,
             stop_idx_t const stop_idx,
             event_type const ev_type) {
@@ -1713,32 +1713,32 @@ namespace nigiri::routing {
                 tt_.event_mam(r, t.t_idx_, stop_idx, ev_type).count());
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        delta_t mcraptor<SearchDir, Rt, Vias, Search>::rt_time_at_stop(rt_transport_idx_t const rt_t,
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        delta_t mcraptor<SearchDir, Rt, Vias, SearchMode>::rt_time_at_stop(rt_transport_idx_t const rt_t,
             stop_idx_t const stop_idx,
             event_type const ev_type) {
             return to_delta(rtt_->base_day_idx_,
                 rtt_->event_time(rt_t, stop_idx, ev_type));
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        delta_t mcraptor<SearchDir, Rt, Vias, Search>::to_delta(day_idx_t const day, std::int16_t const mam) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        delta_t mcraptor<SearchDir, Rt, Vias, SearchMode>::to_delta(day_idx_t const day, std::int16_t const mam) {
             return clamp((as_int(day) - as_int(base_)) * 1440 + mam);
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        unixtime_t mcraptor<SearchDir, Rt, Vias, Search>::to_unix(delta_t const t) { return delta_to_unix(base(), t); }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        unixtime_t mcraptor<SearchDir, Rt, Vias, SearchMode>::to_unix(delta_t const t) { return delta_to_unix(base(), t); }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        std::pair<day_idx_t, minutes_after_midnight_t> mcraptor<SearchDir, Rt, Vias, Search>::split(delta_t const x) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        std::pair<day_idx_t, minutes_after_midnight_t> mcraptor<SearchDir, Rt, Vias, SearchMode>::split(delta_t const x) {
             return split_day_mam(base_, x);
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        bool mcraptor<SearchDir, Rt, Vias, Search>::is_intermodal_dest() const { return !dist_to_end_.empty(); }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        bool mcraptor<SearchDir, Rt, Vias, SearchMode>::is_intermodal_dest() const { return !dist_to_end_.empty(); }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        void mcraptor<SearchDir, Rt, Vias, Search>::update_time_at_dest(unsigned const k, bag const b) {
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        void mcraptor<SearchDir, Rt, Vias, SearchMode>::update_time_at_dest(unsigned const k, bag const b) {
             if constexpr (SearchMode == search_mode::kOneToAll) {
                 return;
             }
@@ -1747,12 +1747,12 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
-        int mcraptor<SearchDir, Rt, Vias, Search>::as_int(day_idx_t const d) const { return static_cast<int>(d.v_); }
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
+        int mcraptor<SearchDir, Rt, Vias, SearchMode>::as_int(day_idx_t const d) const { return static_cast<int>(d.v_); }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         template <typename T>
-        auto mcraptor<SearchDir, Rt, Vias, Search>::get_begin_it(T const& t) {
+        auto mcraptor<SearchDir, Rt, Vias, SearchMode>::get_begin_it(T const& t) {
             if constexpr (kFwd) {
                 return t.begin();
             }
@@ -1761,9 +1761,9 @@ namespace nigiri::routing {
             }
         }
 
-        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode Search>
+        template <direction SearchDir, bool Rt, via_offset_t Vias, search_mode SearchMode>
         template <typename T>
-        auto mcraptor<SearchDir, Rt, Vias, Search>::get_end_it(T const& t) {
+        auto mcraptor<SearchDir, Rt, Vias, SearchMode>::get_end_it(T const& t) {
             if constexpr (kFwd) {
                 return t.end();
             }
