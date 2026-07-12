@@ -195,7 +195,7 @@ namespace nigiri::routing {
             bag copy(Args... t) const{
                 bag ret = bag();
                 ret.add(*this);
-                for (auto e : ret.pareto_set_) {
+                for (auto& e : ret.pareto_set_) {
                     e.time_ = clamp((e.time_ + ... + t));
                 }
                 return ret;
