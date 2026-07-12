@@ -129,32 +129,23 @@ namespace nigiri::routing {
                 return false;
             }
 
-            void add(bag_entry be) {
+            void add(const bag_entry be) {
 
                 if (be.is_invalid()) {
                     return;
                 }
-
-                std::vector<bag_entry> bad_entries;
-                bool should_add = false;
+                
                 if (pareto_set_.empty()) {
                     pareto_set_.push_back(be);
                     return;
                 }
-                for (auto elem : pareto_set_)
-                {
-                    if (be <= elem) {
-                        should_add = true;
-                        bad_entries.push_back(elem);
-                    }
+
+                if (be.time_ < pareto_set_.at(0).time_) {
+                    pareto_set_.at(0).time_ = be.time_;
                 }
-                
-                utl::erase_if(pareto_set_
-                    , [&](auto const& toDelete) { return std::find(bad_entries.begin(), bad_entries.end(), toDelete) != bad_entries.end();});
-                if (should_add) { pareto_set_.push_back(be); }
             }
 
-            void add(delta_t t) {
+            void add(const delta_t t) {
                 if (pareto_set_.empty()) {
                     pareto_set_.push_back(bag_entry(t));
                     return;
@@ -165,7 +156,7 @@ namespace nigiri::routing {
                 }
             }
 
-            void add(bag bg) {
+            void add(const bag bg) {
                 if (bg.is_invalid()) {
                     return;
                 }
