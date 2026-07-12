@@ -108,15 +108,15 @@ namespace nigiri::routing {
             }
 
             bool is_better(bag b) const {
-                return is_better(get_any_time(), b.get_any_time());
+                return mcraptor::is_better(get_any_time(), b.get_any_time());
             }
 
             bool is_better(delta_t time) const {
-                return is_better(get_any_time(), time);
+                return mcraptor::is_better(get_any_time(), time);
             }
 
             bool is_better_with_offset(auto offset, bag b) const {
-                return is_better(get_any_time() + offset, b.get_any_time());
+                return mcraptor::is_better(get_any_time() + offset, b.get_any_time());
             }
 
             void add(const bag_entry be) {
