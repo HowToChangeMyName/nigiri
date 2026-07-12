@@ -129,7 +129,9 @@ namespace nigiri::routing {
                     other_time = b.pareto_set_.at(0).time_;
                 }
 
-                return kFwd?  this_time + offset < other_time  : this_time + offset > other_time;
+                delta_t with_offset = static_cast<delta_t>(this_time + offset);
+
+                return kFwd?  with_offset < other_time  : with_offset > other_time;
             }
 
             void add(const bag_entry be) {
