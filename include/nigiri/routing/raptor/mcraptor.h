@@ -197,7 +197,7 @@ namespace nigiri::routing {
             }
 
             template <typename... Args>
-            bag copy(Args... t) const{
+            bag& copy(Args... t) const{
                 bag ret = bag();
                 ret.add(*this);
 
