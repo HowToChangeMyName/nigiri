@@ -769,7 +769,7 @@ namespace nigiri::routing {
                             transfer_time_settings_,
                             tt_.locations_.transfer_time_[location_idx_t{ i }]
                             .count()));
-                    auto const fp_target_time = *tmp_bag.copy(dir(transfer_time + stay.count()));
+                    auto const fp_target_time = *(tmp_bag.copy(dir(transfer_time + stay.count())));
 
                     trace(
                         "    transfer_time={}, fp_target_time={}, best@target={}, "
@@ -838,9 +838,9 @@ namespace nigiri::routing {
                             stay += via_stops_[start_v].stay_;
                         }
 
-                        auto const fp_target_time = *tmp_bag.copy(dir(adjusted_transfer_time(transfer_time_settings_,
+                        auto const fp_target_time = *(tmp_bag.copy(dir(adjusted_transfer_time(transfer_time_settings_,
                             fp.duration().count()) +
-                            stay.count()));
+                            stay.count())));
 
                         if (!new_best_[target][target_v].is_better(fp_target_time) &&
                             fp_target_time.is_better( best_time_at_dest_[k])) {
@@ -938,7 +938,7 @@ namespace nigiri::routing {
                             stay += via_stops_[start_v].stay_;
                         }
 
-                        auto const fp_target_time = *tmp_bag.copy(dir(fp.duration().count() + stay.count()));
+                        auto const fp_target_time = *(tmp_bag.copy(dir(fp.duration().count() + stay.count())));
 
                         if (!new_best_[target][target_v].is_better(fp_target_time) &&
                             fp_target_time.is_better(best_time_at_dest_[k])) {
@@ -1015,7 +1015,7 @@ namespace nigiri::routing {
                     if constexpr (Vias != 0U) {
                         constexpr auto v = Vias - 1U;
                         if (!new_tmp_[i][v].is_invalid() && is_via_[v][i]) {
-                            auto const end_time = new_tmp_[i][v].copy(dir(via_stops_[v].stay_.count()), dir(dist_to_end_[i]));
+                            auto const end_time = *(new_tmp_[i][v].copy(dir(via_stops_[v].stay_.count()), dir(dist_to_end_[i])));
 
                             trace_upd(
                                 "┊ ├k={}, INTERMODAL FOOTPATH FROM LAST VIA: ({}, tmp={}) "
@@ -1045,7 +1045,7 @@ namespace nigiri::routing {
                         return;
                     }
 
-                    auto const end_time = tmp_bag.copy(dir(dist_to_end_[i]));
+                    auto const end_time = *(tmp_bag.copy(dir(dist_to_end_[i])));
 
                     trace_upd(
                         "┊ ├k={}, INTERMODAL FOOTPATH: ({}, tmp={}) --{}--> "
@@ -1078,7 +1078,7 @@ namespace nigiri::routing {
                         get_td_duration<SearchDir>(it->second, to_unix(fp_start_time.get_any_time()));
                     if (fp.has_value()) {
                         auto const& [duration, _] = *fp;
-                        auto const end_time = fp_start_time.copy(dir(duration.count()));
+                        auto const end_time = *(fp_start_time.copy(dir(duration.count())));
 
                         if (!new_best_[kIntermodalTarget][Vias].is_better(end_time)) {
                             round_times_[k][kIntermodalTarget][Vias].add(end_time);
