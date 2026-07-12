@@ -84,6 +84,25 @@ namespace nigiri::routing {
                 pareto_set_.clear();
             }
 
+            // Depricated
+            delta_t get_any_time() const {
+                if (pareto_set_.empty()) {
+                    return delta_t{ kInvalid };
+                }
+
+                return pareto_set_.at(0).time_;
+            }
+
+            // Depricated 
+            void replace_any_time(delta_t t) {
+                if (pareto_set_.empty()) {
+                    pareto_set_.push_back(bag_entry(t));
+                    return;
+                }
+
+                pareto_set_.at(0).time_ = t;
+            }
+
             bool is_invalid() const {
                 return pareto_set_.empty() || pareto_set_.at(0).time_==kInvalid;
             }
@@ -135,65 +154,15 @@ namespace nigiri::routing {
             }
 
             void add(const bag_entry be) {
-
-                if (be.is_invalid()) {
-                    return;
-                }
-                
-                if (is_invalid()) {
-                    pareto_set_.clear();
-                    pareto_set_.push_back(be);
-                    return;
-                }
-
-                if (kFwd && be.time_ < pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_ = be.time_;
-                }
-
-                if (!kFwd && be.time_ > pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_ = be.time_;
-                }
-
+                replace_any_time(get_best(be.time_, pareto_set_.at(0).time_));
             }
 
             void add(const delta_t t) {
-                if (t == kInvalid) {
-                    return;
-                }
-
-                if (is_invalid()) {
-                    pareto_set_.clear();
-                    pareto_set_.push_back(bag_entry(t));
-                    return;
-                }
-
-                if (kFwd && t < pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_ = t;
-                }
-                if (!kFwd && t > pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_ = t;
-                }
+                replace_any_time(get_best(t, pareto_set_.at(0).time_));
             }
 
             void add(const bag bg) {
-                if (bg.is_invalid()) {
-                    return;
-                }
-
-                if (is_invalid()) {
-                    pareto_set_.clear();
-                    pareto_set_ = bg.pareto_set_;
-                    return;
-                }
-
-                if (kFwd && bg.pareto_set_.at(0).time_ < pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_ = bg.pareto_set_.at(0).time_;
-                }
-
-                if (!kFwd && bg.pareto_set_.at(0).time_ > pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_ = bg.pareto_set_.at(0).time_;
-                }
-
+                replace_any_time(get_best(bg.pareto_set_.at(0).time_, pareto_set_.at(0).time_));
             }
 
             template <typename... Args>
@@ -213,35 +182,8 @@ namespace nigiri::routing {
                 return ret;
             }
 
-            // Depricated
-            delta_t get_any_time() const {
-                if (pareto_set_.empty()) {
-                    return delta_t{ kInvalid };
-                }
 
-                return pareto_set_.at(0).time_;
-            }
 
-            // Depricated 
-            void replace_any_time(delta_t t) {
-                if (pareto_set_.empty()) {
-                    pareto_set_.push_back(bag_entry(t));
-                    return;
-                }
-
-                pareto_set_.at(0).time_ = t;
-            }
-
-            // Depricated
-            void replace_time(delta_t t) {
-                if (t == kInvalid) {
-                    return;
-                }
-
-                if (t < get_any_time()) {
-                    replace_any_time(t);
-                }
-            }
         };
 
         using algo_state_t = raptor_state;
