@@ -154,6 +154,10 @@ namespace nigiri::routing {
             }
 
             void add(const delta_t t) {
+                if (t == kInvalid) {
+                    return;
+                }
+
                 if (pareto_set_.empty()) {
                     pareto_set_.push_back(bag_entry(t));
                     return;
