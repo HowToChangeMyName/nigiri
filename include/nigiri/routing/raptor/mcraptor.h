@@ -97,7 +97,7 @@ namespace nigiri::routing {
             }
 
             bool is_invalid() const {
-                return pareto_set_.empty();
+                return pareto_set_.empty() || pareto_set_.at(0).time_==kInvalid;
             }
 
             bool is_better(delta_t time) const {
