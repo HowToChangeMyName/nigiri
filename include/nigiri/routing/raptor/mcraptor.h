@@ -167,7 +167,7 @@ namespace nigiri::routing {
                 }
 
                 if (bg.pareto_set_.at(0).time_ < pareto_set_.at(0).time_) {
-                    pareto_set_.at(0).time_(0) = bg.pareto_set_.at(0).time_(0);
+                    pareto_set_.at(0).time_ = bg.pareto_set_.at(0).time_;
                 }
 
             }
