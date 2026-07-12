@@ -166,7 +166,7 @@ namespace nigiri::routing {
                     return;
                 }
 
-                if (bg.pareto_set_.at(0).time_(0) < pareto_set_.at(0).time_(0)) {
+                if (bg.pareto_set_.at(0).time_ < pareto_set_.at(0).time_) {
                     pareto_set_.at(0).time_(0) = bg.pareto_set_.at(0).time_(0);
                 }
 
@@ -211,8 +211,6 @@ namespace nigiri::routing {
                     replace_any_time(t);
                 }
             }
-
-
         };
 
         using algo_state_t = raptor_state;
