@@ -757,7 +757,7 @@ namespace nigiri::routing {
                             transfer_time_settings_,
                             tt_.locations_.transfer_time_[location_idx_t{ i }]
                             .count()));
-                    auto const fp_target_time = tmp_bag.copy(transfer_time + dir(stay.count()));
+                    auto const fp_target_time = tmp_bag.copy(dir(transfer_time + stay.count()));
 
                     trace(
                         "    transfer_time={}, fp_target_time={}, best@target={}, "
