@@ -508,12 +508,12 @@ namespace nigiri::routing {
                         trace("ADDING JOURNEY: start={}, dest={} @ {}, transfers={}\n",
                             start_time, delta_to_unix(base(), round_times_[k][i][Vias].get_any_time()),
                             loc{ tt_, location_idx_t{i} }, k - 1);
-                        for (auto label : dest_time.pareto_set_) {
+                        //for (auto label : dest_time.pareto_set_) {
                             // TODO: added criteria should also be added in journey
                             auto const [optimal, it, dominated_by] = results.add(
                                 journey{ .legs_ = {},
                                         .start_time_ = start_time,
-                                        .dest_time_ = delta_to_unix(base(), label.time_),
+                                        .dest_time_ = delta_to_unix(base(), dest_time.pareto_set_.at(0).time_),
                                         .dest_ = location_idx_t{i},
                                         .transfers_ = static_cast<std::uint8_t>(k - 1) });
                             if (!optimal) {
@@ -521,7 +521,7 @@ namespace nigiri::routing {
                                     dominated_by->start_time_, dominated_by->dest_time_,
                                     loc{ tt_, dominated_by->dest_ }, dominated_by->transfers_);
                             }
-                        }
+                        //}
                     }
                 }
                 });
