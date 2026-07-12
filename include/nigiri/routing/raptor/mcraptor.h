@@ -197,17 +197,17 @@ namespace nigiri::routing {
             }
 
             template <typename... Args>
-            bag& copy(Args... t) const{
-                bag ret = bag();
-                ret.add(*this);
+            std::unique_ptr<bag> copy(Args... t) const{
+                std::unique_ptr<bag> ret = std::make_unique<bag>(bag());
+                ret->add(*this);
 
                 bool should_clear = false;
-                for (auto& e : ret.pareto_set_) {
+                for (auto& e : ret->pareto_set_) {
                     e.time_ = clamp((e.time_ + ... + t));
                     should_clear = e.time_ == kInvalid;
                 }
                 if (should_clear) {
-                    ret.pareto_set_.clear();
+                    ret->pareto_set_.clear();
                 }
 
                 return ret;
@@ -769,7 +769,7 @@ namespace nigiri::routing {
                             transfer_time_settings_,
                             tt_.locations_.transfer_time_[location_idx_t{ i }]
                             .count()));
-                    auto const fp_target_time = tmp_bag.copy(dir(transfer_time + stay.count()));
+                    auto const fp_target_time = *tmp_bag.copy(dir(transfer_time + stay.count()));
 
                     trace(
                         "    transfer_time={}, fp_target_time={}, best@target={}, "
@@ -838,7 +838,7 @@ namespace nigiri::routing {
                             stay += via_stops_[start_v].stay_;
                         }
 
-                        auto const fp_target_time = tmp_bag.copy(dir(adjusted_transfer_time(transfer_time_settings_,
+                        auto const fp_target_time = *tmp_bag.copy(dir(adjusted_transfer_time(transfer_time_settings_,
                             fp.duration().count()) +
                             stay.count()));
 
@@ -938,7 +938,7 @@ namespace nigiri::routing {
                             stay += via_stops_[start_v].stay_;
                         }
 
-                        auto const fp_target_time = tmp_bag.copy(dir(fp.duration().count() + stay.count()));
+                        auto const fp_target_time = *tmp_bag.copy(dir(fp.duration().count() + stay.count()));
 
                         if (!new_best_[target][target_v].is_better(fp_target_time) &&
                             fp_target_time.is_better(best_time_at_dest_[k])) {
