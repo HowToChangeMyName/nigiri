@@ -108,49 +108,15 @@ namespace nigiri::routing {
             }
 
             bool is_better(bag b) const {
-                if (is_invalid()) {
-                    return false;
-                }
-                if (b.is_invalid()) {
-                    return true;
-                }
-
-                return kFwd? pareto_set_.at(0).time_ < b.pareto_set_.at(0).time_ : pareto_set_.at(0).time_ > b.pareto_set_.at(0).time_;
-                
+                return is_better(get_any_time(), b.get_any_time());
             }
 
             bool is_better(delta_t time) const {
-                if (is_invalid()) {
-                    return false;
-                }
-                if (time == kInvalid) {
-                    return true;
-                }
-                return kFwd? pareto_set_.at(0).time_ < time : pareto_set_.at(0).time_ > time;
-
-
+                return is_better(get_any_time(), time);
             }
 
-            bool is_better_with_offset(int offset, bag b) const {
-                
-                delta_t this_time;
-                if (is_invalid()) {
-                    this_time = kInvalid;
-                } 
-                else {
-                    this_time = pareto_set_.at(0).time_;
-                }
-                delta_t other_time;
-                if (b.is_invalid()) {
-                    other_time = kInvalid;
-                }
-                else {
-                    other_time = b.pareto_set_.at(0).time_;
-                }
-
-                delta_t with_offset = static_cast<delta_t>(this_time + offset);
-
-                return kFwd?  with_offset < other_time  : with_offset > other_time;
+            bool is_better_with_offset(auto offset, bag b) const {
+                return is_better(get_any_time() + offset, b.get_any_time());
             }
 
             void add(const bag_entry be) {
