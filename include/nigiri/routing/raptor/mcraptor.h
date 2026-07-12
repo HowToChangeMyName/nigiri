@@ -113,16 +113,23 @@ namespace nigiri::routing {
             }
 
             bool is_better_with_offset(int offset, bag b) const {
-
+                
+                delta_t this_time;
                 if (pareto_set_.empty()) {
-                    return false;
+                    this_time = kInvalid;
+                } 
+                else {
+                    this_time = pareto_set_.at(0).time_;
                 }
-
+                delta_t other_time;
                 if (b.is_invalid()) {
-                    return true;
+                    other_time = kInvalid;
+                }
+                else {
+                    other_time = b.pareto_set_.at(0).time_;
                 }
 
-                return kFwd? pareto_set_.at(0).time_ + offset < b.pareto_set_.at(0).time_ : pareto_set_.at(0).time_ + offset > b.pareto_set_.at(0).time_;
+                return kFwd?  this_time + offset < other_time  : this_time + offset > other_time;
             }
 
             void add(const bag_entry be) {
