@@ -85,18 +85,15 @@ namespace nigiri::routing {
             }
 
             bool is_better(bag b) const {
+                if (pareto_set_.empty()) {
+                    return false:
+                }
                 if (b.is_invalid()) {
                     return true;
                 }
 
-                for (auto this_ele : pareto_set_) {
-                    for (auto b_ele : b.pareto_set_) {
-                        if (this_ele < b_ele) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
+                return pareto_set_.at(0).time_ < b.pareto_set_.at(0).time_;
+                
             }
 
             bool is_invalid() const {
@@ -104,29 +101,28 @@ namespace nigiri::routing {
             }
 
             bool is_better(delta_t time) const {
-                for (auto e : pareto_set_) {
-                    if (e <= time) {
-                        return true;
-                    }
+                if (pareto_set_.empty()) {
+                    return false;
                 }
-                return false;
+                if (time == kInvalid) {
+                    return true;
+                }
+                return pareto_set_.at(0).time_ < time;
+
+
             }
 
             bool is_better_with_offset(delta_t offset, bag b) const {
+
+                if () pareto_set_.empty()) {
+                    return false;
+                }
 
                 if (b.is_invalid()) {
                     return true;
                 }
 
-                for (auto this_ele : pareto_set_) {
-                    for (auto b_ele : b.pareto_set_) {
-                        bag_entry offset_ele = bag_entry(this_ele.time_ + offset);
-                        if (offset_ele < b_ele) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
+                return pareto_set_.at(0).time_ + offset < b.pareto_set_.at(0).time_;
             }
 
             void add(const bag_entry be) {
