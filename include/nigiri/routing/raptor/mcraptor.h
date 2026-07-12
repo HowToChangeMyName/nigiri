@@ -84,8 +84,12 @@ namespace nigiri::routing {
                 pareto_set_.clear();
             }
 
+            bool is_invalid() const {
+                return pareto_set_.empty() || pareto_set_.at(0).time_==kInvalid;
+            }
+
             bool is_better(bag b) const {
-                if (pareto_set_.empty()) {
+                if (is_invalid()) {
                     return false;
                 }
                 if (b.is_invalid()) {
@@ -96,12 +100,8 @@ namespace nigiri::routing {
                 
             }
 
-            bool is_invalid() const {
-                return pareto_set_.empty() || pareto_set_.at(0).time_==kInvalid;
-            }
-
             bool is_better(delta_t time) const {
-                if (pareto_set_.empty()) {
+                if (is_invalid()) {
                     return false;
                 }
                 if (time == kInvalid) {
@@ -115,7 +115,7 @@ namespace nigiri::routing {
             bool is_better_with_offset(int offset, bag b) const {
                 
                 delta_t this_time;
-                if (pareto_set_.empty()) {
+                if (is_invalid()) {
                     this_time = kInvalid;
                 } 
                 else {
@@ -138,7 +138,8 @@ namespace nigiri::routing {
                     return;
                 }
                 
-                if (pareto_set_.empty()) {
+                if (is_invalid()) {
+                    pareto_set_.clear();
                     pareto_set_.push_back(be);
                     return;
                 }
@@ -158,7 +159,8 @@ namespace nigiri::routing {
                     return;
                 }
 
-                if (pareto_set_.empty()) {
+                if (is_invalid()) {
+                    pareto_set_.clear();
                     pareto_set_.push_back(bag_entry(t));
                     return;
                 }
@@ -176,7 +178,8 @@ namespace nigiri::routing {
                     return;
                 }
 
-                if (pareto_set_.empty()) {
+                if (is_invalid()) {
+                    pareto_set_.clear();
                     pareto_set_ = bg.pareto_set_;
                     return;
                 }
