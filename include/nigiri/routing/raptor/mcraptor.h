@@ -195,9 +195,16 @@ namespace nigiri::routing {
             bag copy(Args... t) const{
                 bag ret = bag();
                 ret.add(*this);
+
+                bool should_clear = false;
                 for (auto& e : ret.pareto_set_) {
                     e.time_ = clamp((e.time_ + ... + t));
+                    should_clear = e.time_ == kInvalid;
                 }
+                if (should_clear) {
+                    ret.pareto_set_.clear();
+                }
+
                 return ret;
             }
 
