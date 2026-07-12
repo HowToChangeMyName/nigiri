@@ -86,7 +86,7 @@ namespace nigiri::routing {
 
             bool is_better(bag b) const {
                 if (pareto_set_.empty()) {
-                    return false:
+                    return false;
                 }
                 if (b.is_invalid()) {
                     return true;
@@ -114,7 +114,7 @@ namespace nigiri::routing {
 
             bool is_better_with_offset(delta_t offset, bag b) const {
 
-                if () pareto_set_.empty()) {
+                if (pareto_set_.empty()) {
                     return false;
                 }
 
