@@ -112,7 +112,7 @@ namespace nigiri::routing {
 
             }
 
-            bool is_better_with_offset(delta_t offset, bag b) const {
+            bool is_better_with_offset(int offset, bag b) const {
 
                 if (pareto_set_.empty()) {
                     return false;
@@ -757,7 +757,7 @@ namespace nigiri::routing {
                     if (!new_best_[i][target_v].is_better(fp_target_time) &&
                         fp_target_time.is_better( best_time_at_dest_[k])) {
                         if (lb_[i] == kUnreachable ||
-                            !fp_target_time.is_better_with_offset(static_cast<delta_t>(dir(lb_[i])), best_time_at_dest_[k])) {
+                            !fp_target_time.is_better_with_offset(dir(lb_[i]), best_time_at_dest_[k])) {
                             ++stats_.fp_update_prevented_by_lower_bound_;
                             return;
                         }
@@ -823,7 +823,7 @@ namespace nigiri::routing {
                             fp_target_time.is_better( best_time_at_dest_[k])) {
                             auto const lower_bound = lb_[target];
                             if (lower_bound == kUnreachable ||
-                                !fp_target_time.is_better_with_offset(static_cast<delta_t>(dir(lower_bound)), best_time_at_dest_[k])) {
+                                !fp_target_time.is_better_with_offset(dir(lower_bound), best_time_at_dest_[k])) {
                                 ++stats_.fp_update_prevented_by_lower_bound_;
                                 trace_upd(
                                     "┊ ├k={} *** LB NO UPD: (from={}, tmp={}) --{}--> (to={}, "
@@ -921,7 +921,7 @@ namespace nigiri::routing {
                             fp_target_time.is_better(best_time_at_dest_[k])) {
                             auto const lower_bound = lb_[target];
                             if (lower_bound == kUnreachable ||
-                                !fp_target_time.is_better_with_offset(static_cast<delta_t>(dir(lower_bound)), best_time_at_dest_[k])) {
+                                !fp_target_time.is_better_with_offset(dir(lower_bound), best_time_at_dest_[k])) {
                                 ++stats_.fp_update_prevented_by_lower_bound_;
                                 trace_upd(
                                     "┊ ├k={} *** LB NO TD FP UPD: (from={}, tmp={}) --{}--> "
