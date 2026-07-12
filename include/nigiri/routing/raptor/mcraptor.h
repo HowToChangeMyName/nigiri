@@ -155,34 +155,30 @@ namespace nigiri::routing {
             }
 
             void add(delta_t t) {
-                if (t == kInvalid) {
-                    return;
-                }
-
                 if (pareto_set_.empty()) {
                     pareto_set_.push_back(bag_entry(t));
                     return;
                 }
 
-                std::vector<bag_entry> bad_entries;
-                bool should_add = false;
-                for (auto elem : pareto_set_)
-                {
-                    if (!(elem < t)) {
-                        should_add = true;
-                        bad_entries.push_back(elem);
-                    }
+                if (t < pareto_set_.at(0).time_) {
+                    pareto_set_.at(0).time_ = t;
                 }
-
-                utl::erase_if(pareto_set_
-                    , [&](auto const& toDelete) { return std::find(bad_entries.begin(), bad_entries.end(), toDelete) != bad_entries.end();});
-                if (should_add) { pareto_set_.push_back(bag_entry(t)); }
             }
 
             void add(bag bg) {
-                for (auto elem : bg.pareto_set_) {
-                    add(elem);
+                if (bg.is_invalid()) {
+                    return;
                 }
+
+                if (pareto_set_.empty()) {
+                    pareto_set_ = bg.pareto_set_;
+                    return;
+                }
+
+                if (bg.pareto_set_.at(0).time_(0) < pareto_set_.at(0).time_(0)) {
+                    pareto_set_.at(0).time_(0) = bg.pareto_set_.at(0).time_(0);
+                }
+
             }
 
             template <typename... Args>

@@ -186,7 +186,7 @@ routing_result pong(timetable const& tt,
       q.prf_idx_ == 2U,
       q.transfer_time_settings_};
   //#else
-  //auto pong = mcraptor<flip(SearchDir), Rt, Vias, search_mode::kOneToOne>{
+  //auto pong = raptor<flip(SearchDir), Rt, Vias, search_mode::kOneToOne>{
   //    tt,
   //    rtt,
   //    r_state,
