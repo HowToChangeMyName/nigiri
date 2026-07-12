@@ -92,7 +92,7 @@ namespace nigiri::routing {
                     return true;
                 }
 
-                return pareto_set_.at(0).time_ < b.pareto_set_.at(0).time_;
+                return kFwd? pareto_set_.at(0).time_ < b.pareto_set_.at(0).time_ : pareto_set_.at(0).time_ > b.pareto_set_.at(0).time_;
                 
             }
 
@@ -107,7 +107,7 @@ namespace nigiri::routing {
                 if (time == kInvalid) {
                     return true;
                 }
-                return pareto_set_.at(0).time_ < time;
+                return kFwd? pareto_set_.at(0).time_ < time : pareto_set_.at(0).time_ > time;
 
 
             }
@@ -122,7 +122,7 @@ namespace nigiri::routing {
                     return true;
                 }
 
-                return pareto_set_.at(0).time_ + offset < b.pareto_set_.at(0).time_;
+                return kFwd? pareto_set_.at(0).time_ + offset < b.pareto_set_.at(0).time_ : pareto_set_.at(0).time_ + offset > b.pareto_set_.at(0).time_;
             }
 
             void add(const bag_entry be) {
@@ -136,9 +136,14 @@ namespace nigiri::routing {
                     return;
                 }
 
-                if (be.time_ < pareto_set_.at(0).time_) {
+                if (kFwd && be.time_ < pareto_set_.at(0).time_) {
                     pareto_set_.at(0).time_ = be.time_;
                 }
+
+                if (!kFwd && be.time_ > pareto_set_.at(0).time_) {
+                    pareto_set_.at(0).time_ = be.time_;
+                }
+
             }
 
             void add(const delta_t t) {
@@ -147,7 +152,10 @@ namespace nigiri::routing {
                     return;
                 }
 
-                if (t < pareto_set_.at(0).time_) {
+                if (kFwd && t < pareto_set_.at(0).time_) {
+                    pareto_set_.at(0).time_ = t;
+                }
+                if (!kFwd && t > pareto_set_.at(0).time_) {
                     pareto_set_.at(0).time_ = t;
                 }
             }
@@ -162,7 +170,11 @@ namespace nigiri::routing {
                     return;
                 }
 
-                if (bg.pareto_set_.at(0).time_ < pareto_set_.at(0).time_) {
+                if (kFwd && bg.pareto_set_.at(0).time_ < pareto_set_.at(0).time_) {
+                    pareto_set_.at(0).time_ = bg.pareto_set_.at(0).time_;
+                }
+
+                if (!kFwd && bg.pareto_set_.at(0).time_ > pareto_set_.at(0).time_) {
                     pareto_set_.at(0).time_ = bg.pareto_set_.at(0).time_;
                 }
 
