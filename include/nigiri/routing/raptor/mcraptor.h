@@ -85,7 +85,7 @@ namespace nigiri::routing {
             }
 
             // Depricated
-            const delta_t& get_any_time() const {
+            delta_t get_any_time() const {
                 if (pareto_set_.empty()) {
                     return delta_t{ kInvalid };
                 }
