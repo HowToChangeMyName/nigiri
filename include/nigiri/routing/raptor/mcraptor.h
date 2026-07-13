@@ -85,7 +85,7 @@ namespace nigiri::routing {
             }
 
             // Depricated
-            delta_t get_any_time() const {
+            const delta_t& get_any_time() const {
                 if (pareto_set_.empty()) {
                     return delta_t{ kInvalid };
                 }
@@ -104,7 +104,7 @@ namespace nigiri::routing {
             }
 
             bool is_invalid() const {
-                return pareto_set_.empty() || pareto_set_.at(0).time_==kInvalid;
+                return pareto_set_.empty() || get_any_time()==kInvalid;
             }
 
             bool is_better(bag b) const {
@@ -120,15 +120,15 @@ namespace nigiri::routing {
             }
 
             void add(const bag_entry be) {
-                replace_any_time(get_best(be.time_, pareto_set_.at(0).time_));
+                replace_any_time(get_best(be.time_, get_any_time()));
             }
 
             void add(const delta_t t) {
-                replace_any_time(get_best(t, pareto_set_.at(0).time_));
+                replace_any_time(get_best(t, get_any_time()));
             }
 
             void add(const bag bg) {
-                replace_any_time(get_best(bg.pareto_set_.at(0).time_, pareto_set_.at(0).time_));
+                replace_any_time(get_best(bg.get_any_time(), get_any_time()));
             }
 
             template <typename... Args>
@@ -457,7 +457,7 @@ namespace nigiri::routing {
                             auto const [optimal, it, dominated_by] = results.add(
                                 journey{ .legs_ = {},
                                         .start_time_ = start_time,
-                                        .dest_time_ = delta_to_unix(base(), dest_time.pareto_set_.at(0).time_),
+                                        .dest_time_ = delta_to_unix(base(), dest_time.get_any_time()),
                                         .dest_ = location_idx_t{i},
                                         .transfers_ = static_cast<std::uint8_t>(k - 1) });
                             if (!optimal) {
