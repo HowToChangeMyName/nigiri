@@ -435,6 +435,7 @@ namespace nigiri::routing {
                 update_intermodal_footpaths(k);
                 update_footpaths(k, prf_idx);
                 update_td_offsets(k, prf_idx);
+                update_raptor_state();
 
                 trace_print_state_after_round();
             }
@@ -1330,6 +1331,34 @@ namespace nigiri::routing {
                 }
             }
             return any_marked;
+        }
+
+        // TODO: rework raptor_state to avoid copy
+        void update_raptor_state() {
+            auto state_tmp = state_.get_tmp<Vias>();
+            auto state_best = state_.get_best<Vias>();
+            auto state_round_times = state_.get_round_times<Vias>();
+
+            for (unsigned long i = 0; i < state_tmp.size(); ++i) {
+                for (unsigned long v = 0; v < Vias + 1; ++v) {
+                    state_tmp[i][v] = new_tmp_[i][v].get_any_time();
+                }
+            }
+
+            for (unsigned long i = 0; i < state_best.size(); ++i) {
+                for (unsigned long v = 0; v < Vias + 1; ++v) {
+                    state_best[i][v] = new_best_[i][v].get_any_time();
+                }
+            }
+
+            for (unsigned long k = 0; k < state_round_times.n_rows_; ++k) {
+                for (unsigned long i = 0; i < state_round_times.n_columns_; ++i) {
+                    for (unsigned long v = 0; v < Vias + 1; ++v) {
+                        state_round_times[k][i][v] = round_times_[k][i][v].get_any_time();
+                    }
+                }
+            }
+        
         }
 
         transport get_earliest_transport(unsigned const k,
