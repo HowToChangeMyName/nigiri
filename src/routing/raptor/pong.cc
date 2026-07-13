@@ -185,6 +185,7 @@ routing_result pong(timetable const& tt,
       q.require_car_transport_,
       q.prf_idx_ == 2U,
       q.transfer_time_settings_};
+  q.flip_dir();
   //#else
   //auto pong = raptor<flip(SearchDir), Rt, Vias, search_mode::kOneToOne>{
   //    tt,
