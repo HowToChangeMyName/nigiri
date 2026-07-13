@@ -1339,21 +1339,21 @@ namespace nigiri::routing {
             auto state_best = state_.get_best<Vias>();
             auto state_round_times = state_.get_round_times<Vias>();
 
-            for (unsigned long i = 0; i < state_tmp.size(); ++i) {
-                for (unsigned long v = 0; v < Vias + 1; ++v) {
+            for (unsigned i = 0; i < state_tmp.size(); ++i) {
+                for (unsigned v = 0; v < Vias + 1; ++v) {
                     state_tmp[i][v] = new_tmp_[i][v].get_any_time();
                 }
             }
 
-            for (unsigned long i = 0; i < state_best.size(); ++i) {
-                for (unsigned long v = 0; v < Vias + 1; ++v) {
+            for (unsigned i = 0; i < state_best.size(); ++i) {
+                for (unsigned v = 0; v < Vias + 1; ++v) {
                     state_best[i][v] = new_best_[i][v].get_any_time();
                 }
             }
 
-            for (unsigned long k = 0; k < state_round_times.n_rows_; ++k) {
-                for (unsigned long i = 0; i < state_round_times.n_columns_; ++i) {
-                    for (unsigned long v = 0; v < Vias + 1; ++v) {
+            for (unsigned k = 0; k < state_round_times.n_rows_; ++k) {
+                for (unsigned i = 0; i < state_round_times.n_columns_; ++i) {
+                    for (unsigned v = 0; v < Vias + 1; ++v) {
                         state_round_times[k][i][v] = round_times_[k][i][v].get_any_time();
                     }
                 }
