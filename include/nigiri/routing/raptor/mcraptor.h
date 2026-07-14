@@ -315,8 +315,8 @@ namespace nigiri::routing {
                 get_best(t, to_unix(new_best_[to_idx(l)][v].get_any_time())));
             new_best_[to_idx(l)][v].add(unix_to_delta(base(), t));
             round_times_[0U][to_idx(l)][v].add( unix_to_delta(base(), t));
-            state_.station_mark_.set(to_idx(l), true);
             update_raptor_state();
+            state_.station_mark_.set(to_idx(l), true);
         }
 
         void execute(unixtime_t const start_time,
@@ -480,15 +480,16 @@ namespace nigiri::routing {
             }
             trace("reconstruct({} - {}, {} transfers", j.departure_time(),
                 j.arrival_time(), j.transfers_);
+            update_raptor_state();
             reconstruct_journey<SearchDir>(tt_, rtt_, q, state_, j, base(), base_);
         }
         #pragma endregion
     private:
+        #pragma region private_func
         date::sys_days base() const {
             return tt_.internal_interval_days().from_ + as_int(base_) * date::days{ 1 };
         }
 
-        #pragma region private_func
         template <bool WithClaszFilter,
             bool WithBikeFilter,
             bool WithCarFilter,
