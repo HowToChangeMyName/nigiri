@@ -282,6 +282,7 @@ namespace nigiri::routing {
                     }
                 }
             }
+            update_raptor_state();
         }
 
         void next_start_time() {
@@ -301,6 +302,7 @@ namespace nigiri::routing {
             if constexpr (Rt) {
                 utl::fill(state_.rt_transport_mark_.blocks_, 0U);
             }
+            update_raptor_state();  
         }
 
         void add_start(location_idx_t const l, unixtime_t const t) {
@@ -314,6 +316,7 @@ namespace nigiri::routing {
             new_best_[to_idx(l)][v].add(unix_to_delta(base(), t));
             round_times_[0U][to_idx(l)][v].add( unix_to_delta(base(), t));
             state_.station_mark_.set(to_idx(l), true);
+            update_raptor_state();
         }
 
         void execute(unixtime_t const start_time,
